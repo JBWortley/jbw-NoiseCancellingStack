@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/NoiseCancellingStack.Manager/NoiseCancellingStack.Manager.csproj" />
+  <Project Path="tests/NoiseCancellingStack.Tests/NoiseCancellingStack.Tests.csproj" />
+</Solution>
+

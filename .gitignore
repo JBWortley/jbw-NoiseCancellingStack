@@ -1,0 +1,22 @@
+# Build outputs
+bin/
+obj/
+artifacts/
+dist/
+TestResults/
+
+# Downloaded third-party binaries are checksum-pinned and fetched by the build.
+vendor/cache/
+
+# Corresponding-source archives are release assets, not source-control blobs.
+vendor/source/
+
+# Machine-specific migration material: recordings, endpoint GUIDs, and registry exports.
+local-migration/
+tests/integration/*-result.txt
+
+# IDE/user files
+.vs/
+.vscode/
+*.user
+*.suo

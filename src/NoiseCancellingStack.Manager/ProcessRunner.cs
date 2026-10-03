@@ -1,9 +1,11 @@
+// SPDX-License-Identifier: MIT
 using System.Diagnostics;
 
 namespace NoiseCancellingStack;
 
 public static class ProcessRunner
 {
+    // ArgumentList avoids command-shell parsing for paths, task names, and registry destinations.
     public static int Run(string fileName, IEnumerable<string> arguments, bool hidden, OperationLogger? logger = null)
     {
         var start = new ProcessStartInfo
@@ -39,4 +41,3 @@ public static class ProcessRunner
         return process.ExitCode;
     }
 }
-

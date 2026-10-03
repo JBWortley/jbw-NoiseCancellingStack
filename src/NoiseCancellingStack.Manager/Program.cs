@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: MIT
 using System.Security.Principal;
 
 namespace NoiseCancellingStack;
 
 public static class Program
 {
+    // Exit 2 is deliberately distinct from failure: the requested operation completed as far as
+    // it safely could, but an endpoint or third-party change was preserved for manual review.
     private const int ExitSuccess = 0;
     private const int ExitFailure = 1;
     private const int ExitWarnings = 2;

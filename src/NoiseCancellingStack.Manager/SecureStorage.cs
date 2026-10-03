@@ -1,5 +1,10 @@
+// SPDX-License-Identifier: MIT
 namespace NoiseCancellingStack;
 
+/// <summary>
+/// Creates the product-data root with a narrow ACL and refuses reparse points before elevated code
+/// writes logs, backups, or state. Existing descendants are reset to inherit the protected ACL.
+/// </summary>
 public static class SecureStorage
 {
     public static void Ensure()

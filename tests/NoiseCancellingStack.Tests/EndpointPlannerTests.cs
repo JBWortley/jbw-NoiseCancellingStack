@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 using Microsoft.Win32;
 using Xunit;
 
@@ -48,4 +49,3 @@ public sealed class EndpointPlannerTests
     private static Dictionary<string, RegistryValueSnapshot> EmptySlots() =>
         ProductConstants.ApoSlotNames.ToDictionary(name => name, _ => RegistryValueSnapshot.Missing());
 }
-

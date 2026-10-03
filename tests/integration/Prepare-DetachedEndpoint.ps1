@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Destructive integration helper: it refuses active endpoints and requires caller-supplied backups.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]

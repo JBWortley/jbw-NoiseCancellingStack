@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 using System.Text.Json.Serialization;
 using Microsoft.Win32;
 
@@ -38,6 +39,8 @@ public sealed class EndpointState
 
 public sealed class RegistryValueSnapshot
 {
+    // Missing is not the same as an empty string. Preserving that distinction is required to
+    // restore registry values and manager-created keys exactly during rollback.
     public bool Exists { get; set; }
     public RegistryValueKind Kind { get; set; } = RegistryValueKind.Unknown;
     public string? StringValue { get; set; }
@@ -145,4 +148,3 @@ public sealed class OperationReport
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
 [JsonSerializable(typeof(InstallState))]
 internal sealed partial class InstallStateJsonContext : JsonSerializerContext;
-

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 [CmdletBinding()]
 param(
     [switch]$SkipTests,
@@ -7,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$appVersion = '1.0.0'
+$appVersion = '1.0.1'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $vendorCache = Join-Path $root 'vendor\cache'
 $vendorSource = Join-Path $root 'vendor\source'
@@ -15,6 +16,7 @@ $artifacts = Join-Path $root 'artifacts'
 $dist = Join-Path $root 'dist'
 
 $files = @(
+    # Binary inputs are accepted only when their exact upstream digest matches this manifest.
     @{
         Path = Join-Path $vendorCache 'EqualizerAPO-x64-1.4.2.exe'
         Sha256 = '7403BE7427BBE1936A40DDED082829B6E217FC4F5990FEE5CBA501F0AE055AFA'
@@ -95,14 +97,17 @@ function Reset-BuildDirectory {
 }
 
 function New-ProjectSourceArchive {
+    # Build outputs, downloaded binaries, and machine-local diagnostics are selected out rather
+    # than copied and deleted afterward, reducing the chance that private data enters a release.
     $stagingParent = Join-Path $artifacts 'source-staging'
     Reset-BuildDirectory -Path $stagingParent -ExpectedLeaf 'source-staging'
     $sourceRoot = Join-Path $stagingParent "NoiseCancellingStack-$appVersion"
     New-Item -ItemType Directory -Path $sourceRoot -Force | Out-Null
 
     $rootFiles = @(
-        '.gitignore', 'CHANGELOG.md', 'Directory.Build.props', 'global.json', 'LICENSE',
-        'NoiseCancellingStack.slnx', 'README.md', 'SECURITY.md', 'THIRD-PARTY-NOTICES.md'
+        '.gitattributes', '.gitignore', 'CHANGELOG.md', 'CONTRIBUTING.md', 'Directory.Build.props', 'global.json',
+        'LICENSE', 'LICENSING.md', 'NoiseCancellingStack.slnx', 'README.md', 'SECURITY.md',
+        'THIRD-PARTY-NOTICES.md'
     )
     foreach ($name in $rootFiles) {
         Copy-Item -LiteralPath (Join-Path $root $name) -Destination $sourceRoot

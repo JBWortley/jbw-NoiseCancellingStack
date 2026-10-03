@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a reproducible installation, compatibility, filtering, or rollback problem.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not use this form for security vulnerabilities. Use the repository Security tab to report them privately. Remove endpoint GUIDs, machine names, and other identifiers from logs before posting.
+  - type: input
+    id: version
+    attributes:
+      label: Noise Cancelling Stack version
+      placeholder: 1.0.1
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows edition and version
+      placeholder: Windows 11 24H2 x64
+    validations:
+      required: true
+  - type: input
+    id: microphone
+    attributes:
+      label: Microphone and connection type
+      placeholder: USB microphone, analog input, Bluetooth hands-free, etc.
+    validations:
+      required: true
+  - type: input
+    id: sample_rate
+    attributes:
+      label: Capture sample rate
+      description: RNNoise processing requires exactly 48,000 Hz.
+      placeholder: 48000 Hz
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include the application and whether it uses shared or exclusive audio mode.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Sanitized log excerpt
+      description: Never attach recordings or full registry exports unless they are essential and safe to disclose.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed endpoint GUIDs, machine names, and other private identifiers.
+          required: true
+        - label: This report does not describe a security vulnerability.
+          required: true

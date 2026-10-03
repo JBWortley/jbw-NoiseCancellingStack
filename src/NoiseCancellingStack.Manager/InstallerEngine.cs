@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 using System.Security.Cryptography;
 using Microsoft.Win32;
 
@@ -5,6 +6,8 @@ namespace NoiseCancellingStack;
 
 public sealed class InstallerEngine
 {
+    // This class is the transaction coordinator. File/config work happens before endpoint work,
+    // while EndpointRegistry owns the finer-grained write-ahead journal for each registry change.
     private const string ExpectedMonoPluginSha256 = "7DEBDFC4843461C47B23AC7A736B4663FE581643563AE764CDE395E006004080";
 
     private readonly InstallStateStore stateStore;
@@ -21,6 +24,8 @@ public sealed class InstallerEngine
         ValidatePlatformAndDependencies();
         var state = stateStore.Load();
         var configDirectory = GetEqualizerApoConfigDirectory();
+        // A nonempty journal can drive elevated registry restoration. Only accept one when the
+        // protected Equalizer APO config proves that a prior managed installation created it.
         if (state.Endpoints.Count > 0
             && !ConfigManager.IsManagedInstallation(configDirectory, ProductConstants.MonoPluginPath))
         {
@@ -84,6 +89,8 @@ public sealed class InstallerEngine
         SafetyBackup.Create("uninstall", configDirectory, logger);
 
         var report = new EndpointRegistry(stateStore, logger).DetachOwned(state);
+        // Keep the executable, config, and task available when rollback is incomplete. Removing
+        // them would strand the recovery journal and make the safe next action harder.
         if (report.HasWarnings)
         {
             logger.Write(

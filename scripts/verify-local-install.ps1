@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 [CmdletBinding()]
 param(
     [string]$ManagerPath = 'C:\Program Files\NoiseCancellingStack\NoiseCancellingStack.Manager.exe'

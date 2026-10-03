@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 namespace NoiseCancellingStack;
 
 public static class MaintenanceTask
@@ -11,6 +12,8 @@ public static class MaintenanceTask
             throw new FileNotFoundException("The installed manager executable is missing.", managerPath);
         }
 
+        // A SYSTEM task must never point at a user-writable executable. Setup intentionally fixes
+        // the installation directory so this exact protected path can be enforced here.
         var expectedPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             "NoiseCancellingStack",
@@ -63,6 +66,8 @@ public static class MaintenanceTask
     {
         var command = System.Security.SecurityElement.Escape(managerPath)
             ?? throw new ArgumentException("The manager path could not be encoded.", nameof(managerPath));
+        // Explicit battery settings avoid Task Scheduler's default of skipping startup repair on
+        // unplugged laptops. A short execution limit bounds a stuck service or registry operation.
         return $$"""
             <?xml version="1.0" encoding="UTF-16"?>
             <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">

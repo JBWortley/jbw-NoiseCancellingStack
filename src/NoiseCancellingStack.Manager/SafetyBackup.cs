@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: MIT
 using Microsoft.Win32;
 
 namespace NoiseCancellingStack;
 
 public static class SafetyBackup
 {
+    // Coarse full-key exports complement the precise state journal: the journal powers automatic
+    // rollback, while these files remain available for manual disaster recovery.
     public static string Create(string operation, string? configDirectory, OperationLogger logger)
     {
         var safeOperation = string.Concat(operation.Where(c => char.IsLetterOrDigit(c) || c == '-'));
@@ -48,4 +51,3 @@ public static class SafetyBackup
         }
     }
 }
-

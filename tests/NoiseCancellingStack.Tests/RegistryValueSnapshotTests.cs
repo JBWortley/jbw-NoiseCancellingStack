@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 using Microsoft.Win32;
 using Xunit;
 
@@ -38,4 +39,3 @@ public sealed class RegistryValueSnapshotTests
         Assert.Equal(42, snapshot.IntegerValue);
     }
 }
-

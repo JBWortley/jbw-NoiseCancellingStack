@@ -1,5 +1,10 @@
+// SPDX-License-Identifier: MIT
 namespace NoiseCancellingStack;
 
+/// <summary>
+/// Reproduces Equalizer APO's endpoint-mode choice and selects the driver effect that must be
+/// retained as its pre-mix child. Keeping this logic pure makes registry policy unit-testable.
+/// </summary>
 public static class EndpointPlanner
 {
     public static EndpointInstallMode SelectInstallMode(bool hasLegacySlots, bool hasModernSlots, bool isCombinedDevice)

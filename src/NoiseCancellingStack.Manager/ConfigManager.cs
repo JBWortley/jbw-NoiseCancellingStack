@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -5,6 +6,8 @@ namespace NoiseCancellingStack;
 
 public static partial class ConfigManager
 {
+    // The main config receives only a marked include. The separate managed file lets uninstall
+    // remove this project without rewriting unrelated Equalizer APO filters.
     public const string BeginMarker = "# BEGIN NoiseCancellingStack managed block";
     public const string EndMarker = "# END NoiseCancellingStack managed block";
     public const string ManagedFileName = "NoiseCancellingStack.txt";
@@ -99,6 +102,8 @@ public static partial class ConfigManager
     {
         ValidatePath(pluginPath);
         var encodedPath = pluginPath.Contains(' ', StringComparison.Ordinal) ? $"\"{pluginPath}\"" : pluginPath;
+        // Both guards are safety boundaries: capture prevents speaker processing, and 48 kHz is
+        // the only input rate supported by this pinned RNNoise plugin release.
         return string.Join(Environment.NewLine,
         [
             "# Managed by Noise Cancelling Stack. Changes may be replaced during repair.",
@@ -142,6 +147,8 @@ public static partial class ConfigManager
 
     private static void AtomicWrite(string path, string content)
     {
+        // Same-directory replacement avoids a partially written live config and stays on the same
+        // volume, which gives File.Move its strongest replacement semantics on Windows.
         var temporary = path + $".{Guid.NewGuid():N}.new";
         try
         {

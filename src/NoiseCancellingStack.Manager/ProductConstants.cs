@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 using Microsoft.Win32;
 
 namespace NoiseCancellingStack;
@@ -5,7 +6,7 @@ namespace NoiseCancellingStack;
 public static class ProductConstants
 {
     public const string ProductName = "Noise Cancelling Stack";
-    public const string ProductVersion = "1.0.0";
+    public const string ProductVersion = "1.0.1";
     public const string StateSchemaVersion = "1";
     public const string EqualizerApoVersion = "1.4.2";
     public const string RnNoiseVersion = "1.10";
@@ -18,6 +19,8 @@ public static class ProductConstants
     public const string EqualizerApoRoot = @"SOFTWARE\EqualizerAPO";
     public const string ChildApoRoot = @"SOFTWARE\EqualizerAPO\Child APOs";
 
+    // Windows property keys and APO-slot property names are represented by their canonical
+    // fmtid/pid strings in the endpoint registry. Keep these centralized and case-stable.
     public const string ConnectionName = "{a45c254e-df1c-4efd-8020-67d146a850e0},2";
     public const string DeviceName = "{b3f8fa53-0004-438e-9003-51a46e139bfc},6";
     public const string CombinedDevice = "{b3f8fa53-0004-438e-9003-51a46e139bfc},41";
@@ -61,4 +64,3 @@ public static class ProductConstants
 
     public static RegistryView RegistryView => RegistryView.Registry64;
 }
-

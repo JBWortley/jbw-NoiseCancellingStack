@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 namespace NoiseCancellingStack;
 
 public sealed class OperationLogger : IDisposable
@@ -7,6 +8,7 @@ public sealed class OperationLogger : IDisposable
 
     public OperationLogger(string operation, bool quiet)
     {
+        // Secure the parent before choosing or opening a log filename; the process runs elevated.
         this.quiet = quiet;
         SecureStorage.Ensure();
         Directory.CreateDirectory(ProductConstants.LogDirectory);

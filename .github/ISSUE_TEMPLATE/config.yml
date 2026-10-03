@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/JBWortley/jbw-NoiseCancellingStack/security/advisories/new
+    about: Report elevated-write, installer-trust, path, task, or rollback vulnerabilities privately.

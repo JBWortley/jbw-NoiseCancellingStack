@@ -1,5 +1,7 @@
+; SPDX-License-Identifier: MIT
+; The bootstrapper bundles exact, checksum-pinned upstream payloads prepared by scripts/build.ps1.
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 
 #define AppName "Noise Cancelling Stack"
@@ -41,6 +43,7 @@ Source: "..\artifacts\publish\{#ManagerExe}"; DestDir: "{app}"; Flags: ignorever
 Source: "..\artifacts\payload\rnnoise_mono.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSING.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\licenses\EqualizerAPO-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\artifacts\licenses\RNNoisePlugin-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
@@ -77,6 +80,8 @@ begin
   Result := '';
   Version := InstalledApoVersion();
 
+  { Install the pinned engine only when absent. A different version is left untouched because
+    silently replacing an existing system-wide audio engine is not a safe compatibility policy. }
   if Version = '' then
   begin
     WizardForm.StatusLabel.Caption := 'Installing the pinned Equalizer APO audio engine...';
@@ -173,6 +178,8 @@ begin
         Abort;
       end;
 
+      { A warning means rollback was intentionally incomplete. Keep the manager installed so the
+        recovery journal and repair command remain usable instead of stranding the endpoint. }
       if ResultCode = 2 then
       begin
         MsgBox(

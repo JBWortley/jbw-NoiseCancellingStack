@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 using System.Security.AccessControl;
 using Microsoft.Win32;
 
@@ -5,6 +6,7 @@ namespace NoiseCancellingStack;
 
 public sealed class EndpointRegistry
 {
+    // Only HKLM capture endpoints are enumerated. Render/playback endpoints never share this path.
     private readonly InstallStateStore stateStore;
     private readonly OperationLogger logger;
 
@@ -71,6 +73,8 @@ public sealed class EndpointRegistry
 
                 var prepared = PrepareEndpoint(endpointId, displayName, sampleRate, properties, fxRead, hklm);
                 state.Endpoints.Add(prepared);
+                // The original and intended values must reach durable storage before either
+                // registry key changes, so an interrupted operation can be reversed on next run.
                 stateStore.Save(state); // Write-ahead record before the first registry mutation.
 
                 try
@@ -171,6 +175,8 @@ public sealed class EndpointRegistry
         var isCombined = HasValue(properties, ProductConstants.CombinedDevice);
         var mode = EndpointPlanner.SelectInstallMode(hasLegacy, hasModern, isCombined);
 
+        // Equalizer APO uses the child record to retain the driver's prior APO chain. Reusing a
+        // pre-existing child record without knowing its owner could silently corrupt that chain.
         using var childRead = hklm.OpenSubKey($@"{ProductConstants.ChildApoRoot}\{endpointId}", writable: false);
         var originalChild = CaptureValues(childRead, ProductConstants.ManagedChildNames);
         if (childRead is not null)
@@ -235,6 +241,8 @@ public sealed class EndpointRegistry
 
     private static void ApplyPreparedEndpoint(RegistryKey hklm, EndpointState endpoint)
     {
+        // Write the recovery/child record first. If the process stops before the live FxProperties
+        // write completes, the Pending journal plus this record still contains everything needed.
         var childPath = $@"{ProductConstants.ChildApoRoot}\{endpoint.EndpointId}";
         using var child = hklm.CreateSubKey(childPath, writable: true)
             ?? throw new UnauthorizedAccessException($"Could not create {childPath}.");
@@ -311,6 +319,8 @@ public sealed class EndpointRegistry
         foreach (var (name, original) in originals)
         {
             var current = RegistryValueSnapshot.Capture(key, name);
+            // During uninstall, never overwrite a value changed by a driver or another audio tool
+            // after our installation. Original values are accepted to make retries idempotent.
             if (!conflictAware || current.EquivalentTo(installed[name]) || current.EquivalentTo(original))
             {
                 original.Apply(key, name);

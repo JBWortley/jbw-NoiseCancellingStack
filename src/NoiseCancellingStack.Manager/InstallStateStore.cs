@@ -1,9 +1,12 @@
+// SPDX-License-Identifier: MIT
 using System.Text.Json;
 
 namespace NoiseCancellingStack;
 
 public sealed class InstallStateStore
 {
+    // The journal influences elevated registry restoration and is therefore treated as untrusted
+    // input even though SecureStorage restricts ordinary users from modifying it after creation.
     private readonly string path;
 
     public InstallStateStore(string? path = null)
@@ -61,6 +64,8 @@ public sealed class InstallStateStore
             throw new InvalidDataException("The state contains an unreasonable number of endpoints.");
         }
 
+        // Braced GUIDs are the only valid child names below the fixed capture registry roots. This
+        // blocks path-like identifiers and duplicate records before any mutation is attempted.
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var endpoint in state.Endpoints)
         {

@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 namespace NoiseCancellingStack;
 
-public sealed class OperationLogger : IDisposable
+public interface IOperationLogger
+{
+    void Write(string message);
+}
+
+public sealed class OperationLogger : IOperationLogger, IDisposable
 {
     private readonly StreamWriter writer;
     private readonly bool quiet;

@@ -61,6 +61,7 @@ public static class ProductConstants
     public static string BackupDirectory => Path.Combine(ProgramDataDirectory, "backups");
     public static string InstallDirectory => AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
     public static string MonoPluginPath => Path.Combine(InstallDirectory, "plugins", "rnnoise_mono.dll");
+    public static string WebRtcPluginPath => Path.Combine(InstallDirectory, "plugins", "webrtc_apm_16k.dll");
 
     public static RegistryView RegistryView => RegistryView.Registry64;
 }

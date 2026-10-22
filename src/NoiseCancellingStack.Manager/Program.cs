@@ -77,7 +77,9 @@ public static class Program
         {
             logger.Write(
                 $"{(endpoint.EqualizerApoAttached ? "ATTACHED" : "NOT ATTACHED"),-12} " +
-                $"{endpoint.SampleRate,6} Hz  {endpoint.DisplayName}  {endpoint.EndpointId}");
+                $"{endpoint.SampleRate,6} Hz  " +
+                $"{AudioRoutePlanner.Label(AudioRoutePlanner.Select(endpoint.SampleRate)),-11} " +
+                $"{endpoint.DisplayName}  {endpoint.EndpointId}");
         }
         logger.Write($"Attached {endpoints.Count(item => item.EqualizerApoAttached)} of {endpoints.Count} registered capture endpoints.");
         return ExitSuccess;

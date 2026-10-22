@@ -14,9 +14,15 @@ public static partial class ConfigManager
 
     private const string LegacyComment = "# Real-time noise suppression for every capture endpoint hosting Equalizer APO.";
 
-    public static bool Install(string configDirectory, string pluginPath, string backupDirectory, OperationLogger logger)
+    public static bool Install(
+        string configDirectory,
+        string rnNoisePluginPath,
+        string webRtcPluginPath,
+        string backupDirectory,
+        IOperationLogger logger)
     {
-        ValidatePath(pluginPath);
+        ValidatePath(rnNoisePluginPath);
+        ValidatePath(webRtcPluginPath);
         Directory.CreateDirectory(configDirectory);
         Directory.CreateDirectory(backupDirectory);
 
@@ -26,7 +32,7 @@ public static partial class ConfigManager
         var updatedBase = IsKnownLegacyOnlyConfig(original) ? string.Empty : StripManagedBlock(original);
         var includeBlock = $"{BeginMarker}{Environment.NewLine}Include: {ManagedFileName}{Environment.NewLine}{EndMarker}";
         var updated = AppendBlock(updatedBase, includeBlock);
-        var managed = BuildManagedConfig(pluginPath);
+        var managed = BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath);
 
         if (File.Exists(mainPath))
         {
@@ -45,9 +51,13 @@ public static partial class ConfigManager
         return changed;
     }
 
-    public static bool IsManagedInstallation(string configDirectory, string pluginPath)
+    public static bool IsManagedInstallation(
+        string configDirectory,
+        string rnNoisePluginPath,
+        string webRtcPluginPath)
     {
-        ValidatePath(pluginPath);
+        ValidatePath(rnNoisePluginPath);
+        ValidatePath(webRtcPluginPath);
         var mainPath = Path.Combine(configDirectory, "config.txt");
         var managedPath = Path.Combine(configDirectory, ManagedFileName);
         if (!File.Exists(mainPath) || !File.Exists(managedPath))
@@ -55,13 +65,37 @@ public static partial class ConfigManager
             return false;
         }
 
-        var main = File.ReadAllText(mainPath).Replace("\r\n", "\n", StringComparison.Ordinal);
-        var expectedBlock = $"{BeginMarker}\nInclude: {ManagedFileName}\n{EndMarker}";
-        return main.Contains(expectedBlock, StringComparison.Ordinal)
-            && string.Equals(File.ReadAllText(managedPath), BuildManagedConfig(pluginPath), StringComparison.Ordinal);
+        return HasManagedInclude(mainPath)
+            && string.Equals(
+                File.ReadAllText(managedPath),
+                BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath),
+                StringComparison.Ordinal);
     }
 
-    public static bool Uninstall(string configDirectory, string pluginPath, OperationLogger logger)
+    public static bool IsTrustedManagedInstallation(
+        string configDirectory,
+        string rnNoisePluginPath,
+        string webRtcPluginPath)
+    {
+        ValidatePath(rnNoisePluginPath);
+        ValidatePath(webRtcPluginPath);
+        var mainPath = Path.Combine(configDirectory, "config.txt");
+        var managedPath = Path.Combine(configDirectory, ManagedFileName);
+        if (!File.Exists(mainPath) || !File.Exists(managedPath) || !HasManagedInclude(mainPath))
+        {
+            return false;
+        }
+
+        var actual = File.ReadAllText(managedPath);
+        return string.Equals(actual, BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath), StringComparison.Ordinal)
+            || string.Equals(actual, BuildVersion101ManagedConfig(rnNoisePluginPath), StringComparison.Ordinal);
+    }
+
+    public static bool Uninstall(
+        string configDirectory,
+        string rnNoisePluginPath,
+        string webRtcPluginPath,
+        IOperationLogger logger)
     {
         var mainPath = Path.Combine(configDirectory, "config.txt");
         var managedPath = Path.Combine(configDirectory, ManagedFileName);
@@ -81,13 +115,13 @@ public static partial class ConfigManager
 
         if (File.Exists(managedPath))
         {
-            var expected = BuildManagedConfig(pluginPath);
+            var expected = BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath);
             var actual = File.ReadAllText(managedPath);
             if (string.Equals(actual, expected, StringComparison.Ordinal))
             {
                 File.Delete(managedPath);
                 changed = true;
-                logger.Write("Removed the unmodified managed RNNoise configuration file.");
+                logger.Write("Removed the unmodified managed noise-suppression configuration file.");
             }
             else
             {
@@ -98,12 +132,36 @@ public static partial class ConfigManager
         return changed;
     }
 
-    public static string BuildManagedConfig(string pluginPath)
+    public static string BuildManagedConfig(string rnNoisePluginPath, string webRtcPluginPath)
     {
-        ValidatePath(pluginPath);
-        var encodedPath = pluginPath.Contains(' ', StringComparison.Ordinal) ? $"\"{pluginPath}\"" : pluginPath;
-        // Both guards are safety boundaries: capture prevents speaker processing, and 48 kHz is
-        // the only input rate supported by this pinned RNNoise plugin release.
+        ValidatePath(rnNoisePluginPath);
+        ValidatePath(webRtcPluginPath);
+        var encodedRnNoisePath = EncodePath(rnNoisePluginPath);
+        var encodedWebRtcPath = EncodePath(webRtcPluginPath);
+        // The stage guard prevents speaker processing. The mutually exclusive rate guards ensure
+        // each pinned processor only receives the sample rate it supports.
+        return string.Join(Environment.NewLine,
+        [
+            "# Managed by Noise Cancelling Stack. Changes may be replaced during repair.",
+            "# RNNoise handles 48000 Hz and WebRTC APM handles 16000 Hz; other rates pass through unchanged.",
+            "Device: all",
+            "If: stage == \"capture\"",
+            "    If: sampleRate == 48000",
+            "        Channel: all",
+            $"        VSTPlugin: Library {encodedRnNoisePath}",
+            "    EndIf:",
+            "    If: sampleRate == 16000",
+            "        Channel: all",
+            $"        VSTPlugin: Library {encodedWebRtcPath}",
+            "    EndIf:",
+            "EndIf:",
+            string.Empty
+        ]);
+    }
+
+    private static string BuildVersion101ManagedConfig(string rnNoisePluginPath)
+    {
+        var encodedPath = EncodePath(rnNoisePluginPath);
         return string.Join(Environment.NewLine,
         [
             "# Managed by Noise Cancelling Stack. Changes may be replaced during repair.",
@@ -167,6 +225,16 @@ public static partial class ConfigManager
         {
             throw new ArgumentException("The plugin path is invalid.", nameof(path));
         }
+    }
+
+    private static string EncodePath(string path) =>
+        path.Contains(' ', StringComparison.Ordinal) ? $"\"{path}\"" : path;
+
+    private static bool HasManagedInclude(string mainPath)
+    {
+        var main = File.ReadAllText(mainPath).Replace("\r\n", "\n", StringComparison.Ordinal);
+        var expectedBlock = $"{BeginMarker}\nInclude: {ManagedFileName}\n{EndMarker}";
+        return main.Contains(expectedBlock, StringComparison.Ordinal);
     }
 
     [GeneratedRegex(

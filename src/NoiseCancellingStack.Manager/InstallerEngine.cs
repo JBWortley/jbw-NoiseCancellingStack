@@ -27,7 +27,10 @@ public sealed class InstallerEngine
         // A nonempty journal can drive elevated registry restoration. Only accept one when the
         // protected Equalizer APO config proves that a prior managed installation created it.
         if (state.Endpoints.Count > 0
-            && !ConfigManager.IsManagedInstallation(configDirectory, ProductConstants.MonoPluginPath))
+            && !ConfigManager.IsTrustedManagedInstallation(
+                configDirectory,
+                ProductConstants.MonoPluginPath,
+                ProductConstants.WebRtcPluginPath))
         {
             throw new InvalidDataException(
                 "A nonempty state journal exists without its trusted managed Equalizer APO configuration. " +
@@ -40,6 +43,7 @@ public sealed class InstallerEngine
             ConfigChanged = ConfigManager.Install(
                 configDirectory,
                 ProductConstants.MonoPluginPath,
+                ProductConstants.WebRtcPluginPath,
                 ProductConstants.BackupDirectory,
                 logger)
         };
@@ -104,7 +108,11 @@ public sealed class InstallerEngine
 
         if (!string.IsNullOrWhiteSpace(configDirectory))
         {
-            report.ConfigChanged = ConfigManager.Uninstall(configDirectory, ProductConstants.MonoPluginPath, logger);
+            report.ConfigChanged = ConfigManager.Uninstall(
+                configDirectory,
+                ProductConstants.MonoPluginPath,
+                ProductConstants.WebRtcPluginPath,
+                logger);
         }
         state.ConfigInstalled = false;
         stateStore.Save(state);

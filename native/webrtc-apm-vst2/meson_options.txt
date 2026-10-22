@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-only
+option(
+  'with_webrtc',
+  type: 'boolean',
+  value: false,
+  description: 'Build the pinned WebRTC APM processor and integration tests',
+)

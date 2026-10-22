@@ -1,0 +1,6 @@
+; SPDX-License-Identifier: GPL-3.0-only
+LIBRARY webrtc_apm_16k
+EXPORTS
+    VSTPluginMain
+    main=VSTPluginMain
+    NcsWebRtcApmSelfTest

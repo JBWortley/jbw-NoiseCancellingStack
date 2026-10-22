@@ -5,7 +5,8 @@ Describe the problem and the smallest change that solves it.
 ## Safety impact
 
 - [ ] Capture endpoints only; no render/playback changes.
-- [ ] The 48 kHz and capture-stage guards remain enforced.
+- [ ] The exclusive 16 kHz WebRTC, 48 kHz RNNoise, and capture-stage guards remain enforced.
+- [ ] Unsupported sample rates remain pass-through.
 - [ ] Existing APO values and user configuration remain preserved.
 - [ ] Registry mutation still follows durable write-ahead state and backup creation.
 - [ ] Uninstall remains conflict-aware and recoverable.
@@ -19,3 +20,4 @@ List automated tests and any install, repair, rollback, uninstall, or clean-mach
 
 - [ ] I am authorized to submit this contribution under the repository's MIT License.
 - [ ] Any third-party material is identified with its origin and license.
+- [ ] Native dependency, patent, and corresponding-source notices remain complete.

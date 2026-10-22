@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 (unreleased)
+
+- Added a hardware-vendor-agnostic WebRTC APM noise-suppression path for exactly 16 kHz capture streams, including Logitech C920 and Bluetooth hands-free use cases.
+- Kept exactly 48 kHz streams on RNNoise and all other sample rates on unchanged pass-through.
+- Added a fixed 10 ms delay to the 16 kHz processor so arbitrary host block sizes remain ordered and failure can switch to delayed dry audio safely.
+- Added pre-mutation checksum and synthetic self-test validation for both native payloads, plus hidden SYSTEM startup repair using the existing one-minute boot trigger.
+- Added pinned WebRTC, Abseil, Meson, Ninja, FST, license, patent, and corresponding-source packaging.
+- Applications with their own filtering can cause double suppression; disable one layer if speech sounds metallic, pumps, or loses quiet syllables.
+
 ## 1.0.1 (unreleased)
 
 - Prepared the repository for public review with a use-case-focused README and contribution guidance.

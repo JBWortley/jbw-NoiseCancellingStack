@@ -39,6 +39,16 @@ $fstSourceArchive = @{
     Sha256 = '04288A2873E7DC5027E57F24F740C3FA6B624D1B7E51C4F444E0BDB7FFB4232C'
     Url = 'https://github.com/werman/noise-suppression-for-voice/archive/refs/tags/v1.10.zip'
 }
+$abseilArchive = @{
+    Path = Join-Path $sourceCache 'abseil-cpp-20250814.1.tar.gz'
+    Sha256 = '1692F77D1739BACF3F94337188B78583CF09BAB7E420D2DC6C5605A4F86785A1'
+    Url = 'https://github.com/abseil/abseil-cpp/releases/download/20250814.1/abseil-cpp-20250814.1.tar.gz'
+}
+$abseilPatch = @{
+    Path = Join-Path $sourceCache 'abseil-cpp_20250814.1-1_patch.zip'
+    Sha256 = 'F44AD4D72FF2919A6A48CF0887F69AEF34C338BFDD8931153596E3766D75F654'
+    Url = 'https://wrapdb.mesonbuild.com/v2/abseil-cpp_20250814.1-1/get_patch'
+}
 
 function Get-VerifiedFile {
     param([Parameter(Mandatory)][hashtable]$Descriptor)
@@ -111,6 +121,10 @@ function New-NativeSourceTree {
     New-Item -ItemType Directory -Path $subprojects -Force | Out-Null
     Copy-Item -LiteralPath $webRtcRoot.FullName `
         -Destination (Join-Path $subprojects 'webrtc-audio-processing') -Recurse -Force
+    $packageCache = Join-Path $subprojects 'packagecache'
+    New-Item -ItemType Directory -Path $packageCache -Force | Out-Null
+    Copy-Item -LiteralPath $abseilArchive.Path -Destination $packageCache -Force
+    Copy-Item -LiteralPath $abseilPatch.Path -Destination $packageCache -Force
 
     $fstDirectory = Join-Path $stagingProject 'fst'
     foreach ($header in @('aeffect.h', 'aeffectx.h', 'fst.h')) {
@@ -145,6 +159,8 @@ Get-VerifiedFile $ninjaArchive
 if ($needsWebRtc) {
     Get-VerifiedFile $webRtcArchive
     Get-VerifiedFile $fstSourceArchive
+    Get-VerifiedFile $abseilArchive
+    Get-VerifiedFile $abseilPatch
     $sourceDirectory = New-NativeSourceTree
 }
 

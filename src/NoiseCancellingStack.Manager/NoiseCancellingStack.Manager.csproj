@@ -9,12 +9,12 @@
     <RootNamespace>NoiseCancellingStack</RootNamespace>
     <Product>Noise Cancelling Stack</Product>
     <Authors>JBWortley</Authors>
-    <Description>Offline system-wide RNNoise microphone filtering manager for Windows.</Description>
+    <Description>Offline system-wide microphone noise suppression manager for Windows.</Description>
     <RepositoryUrl>https://github.com/JBWortley/jbw-NoiseCancellingStack</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <AssemblyVersion>1.0.1.0</AssemblyVersion>
-    <FileVersion>1.0.1.0</FileVersion>
-    <Version>1.0.1</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <Version>1.1.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>

@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$appVersion = '1.0.1'
+$appVersion = '1.1.0'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $vendorCache = Join-Path $root 'vendor\cache'
 $vendorSource = Join-Path $root 'vendor\source'
@@ -45,6 +45,21 @@ $sourceFiles = @(
         Path = Join-Path $vendorSource 'noise-suppression-for-voice-v1.10.zip'
         Sha256 = '04288A2873E7DC5027E57F24F740C3FA6B624D1B7E51C4F444E0BDB7FFB4232C'
         Urls = @('https://github.com/werman/noise-suppression-for-voice/archive/refs/tags/v1.10.zip')
+    },
+    @{
+        Path = Join-Path $vendorSource 'webrtc-audio-processing-3a6b666a906da6cb3c6f9d474fab21c2ba739f22.zip'
+        Sha256 = '028DF34D5ED4A1015B7349D2A099EFB27C17A68ACEFB5C1D448F833207F5DB9A'
+        Urls = @('https://codeload.github.com/Sqhh99/webrtc-audio-processing/zip/3a6b666a906da6cb3c6f9d474fab21c2ba739f22')
+    },
+    @{
+        Path = Join-Path $vendorSource 'abseil-cpp-20250814.1.tar.gz'
+        Sha256 = '1692F77D1739BACF3F94337188B78583CF09BAB7E420D2DC6C5605A4F86785A1'
+        Urls = @('https://github.com/abseil/abseil-cpp/releases/download/20250814.1/abseil-cpp-20250814.1.tar.gz')
+    },
+    @{
+        Path = Join-Path $vendorSource 'abseil-cpp_20250814.1-1_patch.zip'
+        Sha256 = 'F44AD4D72FF2919A6A48CF0887F69AEF34C338BFDD8931153596E3766D75F654'
+        Urls = @('https://wrapdb.mesonbuild.com/v2/abseil-cpp_20250814.1-1/get_patch')
     }
 )
 
@@ -113,7 +128,7 @@ function New-ProjectSourceArchive {
         Copy-Item -LiteralPath (Join-Path $root $name) -Destination $sourceRoot
     }
 
-    $sourceDirectories = @('.github', 'docs', 'installer', 'scripts', 'src', 'tests')
+    $sourceDirectories = @('.github', 'docs', 'installer', 'native', 'scripts', 'src', 'tests')
     foreach ($directory in $sourceDirectories) {
         $sourceDirectory = Join-Path $root $directory
         if (-not (Test-Path -LiteralPath $sourceDirectory)) { continue }
@@ -159,13 +174,24 @@ function Expand-ZipEntry {
 foreach ($descriptor in $files) { Get-VerifiedFile $descriptor }
 foreach ($descriptor in $sourceFiles) { Get-VerifiedFile $descriptor }
 
+Reset-BuildDirectory -Path $artifacts -ExpectedLeaf 'artifacts'
+Reset-BuildDirectory -Path $dist -ExpectedLeaf 'dist'
+
+& powershell -ExecutionPolicy Bypass -File (Join-Path $root 'scripts\build-native.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Native build failed.' }
+
+$nativePropsPath = Join-Path $artifacts 'native\webrtc-apm.props'
+if (-not (Test-Path -LiteralPath $nativePropsPath)) { throw 'Native payload manifest is missing.' }
+[xml]$nativeProps = Get-Content -LiteralPath $nativePropsPath -Raw
+$webRtcPluginHash = [string]$nativeProps.Project.PropertyGroup.WebRtcApmPluginSha256
+if ($webRtcPluginHash -notmatch '^[0-9A-F]{64}$') { throw 'Native payload manifest has an invalid SHA-256 digest.' }
+
 if (-not $SkipTests) {
-    & dotnet test (Join-Path $root 'NoiseCancellingStack.slnx') --configuration Release --nologo
+    & dotnet test (Join-Path $root 'NoiseCancellingStack.slnx') --configuration Release --nologo `
+        "-p:WebRtcApmPluginSha256=$webRtcPluginHash"
     if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 }
 
-Reset-BuildDirectory -Path $artifacts -ExpectedLeaf 'artifacts'
-Reset-BuildDirectory -Path $dist -ExpectedLeaf 'dist'
 Expand-ZipEntry `
     -ZipPath (Join-Path $vendorCache 'win-rnnoise-v1.10.zip') `
     -EntryName 'win-rnnoise/vst/rnnoise_mono.dll' `
@@ -184,12 +210,33 @@ Expand-ZipEntry `
     -ZipPath (Join-Path $vendorSource 'noise-suppression-for-voice-v1.10.zip') `
     -EntryName 'noise-suppression-for-voice-1.10/LICENSE' `
     -Destination (Join-Path $artifacts 'licenses\RNNoisePlugin-LICENSE.txt')
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource 'noise-suppression-for-voice-v1.10.zip') `
+    -EntryName 'noise-suppression-for-voice-1.10/external/FST/LICENSE' `
+    -Destination (Join-Path $artifacts 'licenses\FST-LICENSE.txt')
+$webRtcArchiveRoot = 'webrtc-audio-processing-3a6b666a906da6cb3c6f9d474fab21c2ba739f22'
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
+    -EntryName "$webRtcArchiveRoot/COPYING" `
+    -Destination (Join-Path $artifacts 'licenses\WebRTCAudioProcessing-COPYING.txt')
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
+    -EntryName "$webRtcArchiveRoot/webrtc/LICENSE" `
+    -Destination (Join-Path $artifacts 'licenses\WebRTC-LICENSE.txt')
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
+    -EntryName "$webRtcArchiveRoot/webrtc/PATENTS" `
+    -Destination (Join-Path $artifacts 'licenses\WebRTC-PATENTS.txt')
+$abseilLicense = Join-Path $artifacts 'native-source\project\subprojects\abseil-cpp-20250814.1\LICENSE'
+if (-not (Test-Path -LiteralPath $abseilLicense)) { throw 'Abseil license was not found in the verified native source tree.' }
+Copy-Item -LiteralPath $abseilLicense -Destination (Join-Path $artifacts 'licenses\Abseil-LICENSE.txt') -Force
 
 & dotnet publish (Join-Path $root 'src\NoiseCancellingStack.Manager\NoiseCancellingStack.Manager.csproj') `
     --configuration Release `
     --runtime win-x64 `
     --self-contained true `
     --output (Join-Path $artifacts 'publish') `
+    "-p:WebRtcApmPluginSha256=$webRtcPluginHash" `
     --nologo
 if ($LASTEXITCODE -ne 0) { throw 'Manager publish failed.' }
 
@@ -204,8 +251,9 @@ if ($null -eq $iscc) { throw 'Inno Setup 6 compiler was not found.' }
 if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
 
 if (-not $SkipSourceBundle) {
-    Copy-Item -LiteralPath (Join-Path $vendorSource 'EqualizerAPO-src-1.4.2.zip') -Destination $dist -Force
-    Copy-Item -LiteralPath (Join-Path $vendorSource 'noise-suppression-for-voice-v1.10.zip') -Destination $dist -Force
+    foreach ($descriptor in $sourceFiles) {
+        Copy-Item -LiteralPath $descriptor.Path -Destination $dist -Force
+    }
     New-ProjectSourceArchive
 }
 

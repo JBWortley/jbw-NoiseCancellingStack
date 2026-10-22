@@ -16,4 +16,14 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - run: dotnet test .\NoiseCancellingStack.slnx --configuration Release --nologo
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build and test native processors
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\build-native.ps1
+      - name: Test managed components with generated payload hash
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content .\artifacts\native\webrtc-apm.props -Raw
+          $hash = [string]$props.Project.PropertyGroup.WebRtcApmPluginSha256
+          dotnet test .\NoiseCancellingStack.slnx --configuration Release --nologo "-p:WebRtcApmPluginSha256=$hash"

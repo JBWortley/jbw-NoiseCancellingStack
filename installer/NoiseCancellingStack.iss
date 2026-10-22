@@ -1,7 +1,7 @@
 ; SPDX-License-Identifier: MIT
 ; The bootstrapper bundles exact, checksum-pinned upstream payloads prepared by scripts/build.ps1.
 #ifndef AppVersion
-  #define AppVersion "1.0.1"
+  #define AppVersion "1.1.0"
 #endif
 
 #define AppName "Noise Cancelling Stack"
@@ -15,7 +15,7 @@ AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
-VersionInfoDescription=Offline RNNoise microphone filtering installer
+VersionInfoDescription=Offline system-wide microphone noise suppression installer
 DefaultDirName={autopf}\NoiseCancellingStack
 DisableDirPage=yes
 UsePreviousAppDir=no
@@ -41,12 +41,18 @@ ChangesAssociations=no
 [Files]
 Source: "..\artifacts\publish\{#ManagerExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\payload\rnnoise_mono.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion
+Source: "..\artifacts\payload\webrtc_apm_16k.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSING.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\licenses\EqualizerAPO-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\artifacts\licenses\RNNoisePlugin-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\FST-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\WebRTCAudioProcessing-COPYING.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\WebRTC-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\WebRTC-PATENTS.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\Abseil-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\vendor\cache\EqualizerAPO-x64-1.4.2.exe"; Flags: dontcopy
 
 [Icons]
@@ -120,7 +126,7 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
-    WizardForm.StatusLabel.Caption := 'Registering capture endpoints and installing the RNNoise configuration...';
+    WizardForm.StatusLabel.Caption := 'Registering capture endpoints and installing noise suppression...';
     if not Exec(
       ExpandConstant('{app}\{#ManagerExe}'),
       'install --quiet',

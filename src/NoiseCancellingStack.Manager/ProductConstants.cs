@@ -6,7 +6,7 @@ namespace NoiseCancellingStack;
 public static class ProductConstants
 {
     public const string ProductName = "Noise Cancelling Stack";
-    public const string ProductVersion = "1.0.1";
+    public const string ProductVersion = "1.1.0";
     public const string StateSchemaVersion = "1";
     public const string EqualizerApoVersion = "1.4.2";
     public const string RnNoiseVersion = "1.10";

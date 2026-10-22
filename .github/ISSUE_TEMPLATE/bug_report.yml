@@ -12,7 +12,7 @@ body:
     id: version
     attributes:
       label: Noise Cancelling Stack version
-      placeholder: 1.0.1
+      placeholder: 1.1.0
     validations:
       required: true
   - type: input
@@ -33,8 +33,8 @@ body:
     id: sample_rate
     attributes:
       label: Capture sample rate
-      description: RNNoise processing requires exactly 48,000 Hz.
-      placeholder: 48000 Hz
+      description: WebRTC APM processes exactly 16 kHz, RNNoise processes exactly 48 kHz, and other rates pass through.
+      placeholder: 16000 Hz or 48000 Hz
     validations:
       required: true
   - type: textarea

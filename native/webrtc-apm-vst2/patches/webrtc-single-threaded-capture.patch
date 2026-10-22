@@ -1,0 +1,41 @@
+diff --git a/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc b/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc
+--- a/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc
++++ b/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc
+@@ -876,15 +876,9 @@ void AudioProcessingImpl::MaybeInitializeCapture(
+     const StreamConfig& input_config,
+     const StreamConfig& output_config) {
+-  ProcessingConfig processing_config;
+-  bool reinitialization_required = false;
+-  {
+-    // Acquire the capture lock in order to access api_format. The lock is
+-    // released immediately, as we may need to acquire the render lock as part
+-    // of the conditional reinitialization.
+-    MutexLock lock_capture(&mutex_capture_);
+-    processing_config = formats_.api_format;
+-    reinitialization_required = UpdateActiveSubmoduleStates();
+-  }
++  // Noise Cancelling Stack owns each APM instance on one audio thread. Avoid
++  // upstream's cross-thread serialization in this callback-only integration.
++  ProcessingConfig processing_config = formats_.api_format;
++  bool reinitialization_required = UpdateActiveSubmoduleStates();
+ 
+   if (processing_config.input_stream() != input_config) {
+     reinitialization_required = true;
+@@ -896,8 +890,6 @@ void AudioProcessingImpl::MaybeInitializeCapture(
+   }
+ 
+   if (reinitialization_required) {
+-    MutexLock lock_render(&mutex_render_);
+-    MutexLock lock_capture(&mutex_capture_);
+     // Reread the API format since the render format may have changed.
+     processing_config = formats_.api_format;
+     processing_config.input_stream() = input_config;
+@@ -916,8 +908,6 @@ int AudioProcessingImpl::ProcessStream(const float* const* src,
+       HandleUnsupportedAudioFormats(src, input_config, output_config, dest));
+   MaybeInitializeCapture(input_config, output_config);
+ 
+-  MutexLock lock_capture(&mutex_capture_);
+-
+   if (aec_dump_) {
+     RecordUnprocessedCaptureStream(src);
+   }

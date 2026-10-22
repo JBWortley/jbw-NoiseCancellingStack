@@ -17,6 +17,7 @@ class FrameAdapter final {
 
   void ProcessBlock(const float* input, float* output, std::size_t sample_count) noexcept;
   void Reset() noexcept;
+  void EnterPermanentBypass() noexcept { bypassed_ = true; }
   [[nodiscard]] bool bypassed() const noexcept { return bypassed_; }
 
  private:

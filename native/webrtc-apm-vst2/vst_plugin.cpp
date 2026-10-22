@@ -131,8 +131,9 @@ class PluginInstance final {
       }
       instance->adapter_.ProcessBlock(inputs[0], outputs[0], count);
     } catch (...) {
-      std::memmove(
-          outputs[0], inputs[0], static_cast<std::size_t>(sample_count) * sizeof(float));
+      instance->adapter_.EnterPermanentBypass();
+      instance->adapter_.ProcessBlock(
+          inputs[0], outputs[0], static_cast<std::size_t>(sample_count));
     }
   }
 

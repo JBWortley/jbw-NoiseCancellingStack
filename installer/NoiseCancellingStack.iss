@@ -52,6 +52,10 @@ Source: "..\artifacts\licenses\FST-LICENSE.txt"; DestDir: "{app}\licenses"; Flag
 Source: "..\artifacts\licenses\WebRTCAudioProcessing-COPYING.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\artifacts\licenses\WebRTC-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\artifacts\licenses\WebRTC-PATENTS.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\WebRTC-Ooura-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\WebRTC-FFT-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\WebRTC-PFFFT-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\artifacts\licenses\WebRTC-RNNoise-COPYING.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\artifacts\licenses\Abseil-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\vendor\cache\EqualizerAPO-x64-1.4.2.exe"; Flags: dontcopy
 

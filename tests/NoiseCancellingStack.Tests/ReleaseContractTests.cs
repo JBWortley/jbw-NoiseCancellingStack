@@ -38,6 +38,16 @@ public sealed class ReleaseContractTests
         Assert.Contains("WebRTC-LICENSE.txt", installer, StringComparison.Ordinal);
         Assert.Contains("WebRTC-PATENTS.txt", installer, StringComparison.Ordinal);
         Assert.Contains("FST-LICENSE.txt", installer, StringComparison.Ordinal);
+        Assert.Contains("WebRTC-Ooura-LICENSE.txt", installer, StringComparison.Ordinal);
+        Assert.Contains("WebRTC-FFT-LICENSE.txt", installer, StringComparison.Ordinal);
+        Assert.Contains("WebRTC-PFFFT-LICENSE.txt", installer, StringComparison.Ordinal);
+        Assert.Contains("WebRTC-RNNoise-COPYING.txt", installer, StringComparison.Ordinal);
+
+        var notices = Read("THIRD-PARTY-NOTICES.md");
+        Assert.Contains("Ooura FFT", notices, StringComparison.Ordinal);
+        Assert.Contains("WebRTC FFT", notices, StringComparison.Ordinal);
+        Assert.Contains("PFFFT", notices, StringComparison.Ordinal);
+        Assert.Contains("WebRTC RNNoise", notices, StringComparison.Ordinal);
     }
 
     [Fact]

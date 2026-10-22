@@ -35,10 +35,14 @@ void FrameAdapter::ProcessBlock(
     bool frame_is_valid = false;
     if (!bypassed_) {
       processed_frame_.fill(0.0F);
-      frame_is_valid = processor_.ProcessFrame(input_frame_, processed_frame_)
-          && std::all_of(processed_frame_.begin(), processed_frame_.end(), [](float value) {
-               return std::isfinite(value);
-             });
+      try {
+        frame_is_valid = processor_.ProcessFrame(input_frame_, processed_frame_)
+            && std::all_of(processed_frame_.begin(), processed_frame_.end(), [](float value) {
+                 return std::isfinite(value);
+               });
+      } catch (...) {
+        frame_is_valid = false;
+      }
     }
 
     if (frame_is_valid) {
@@ -56,7 +60,6 @@ void FrameAdapter::Reset() noexcept {
   delayed_output_.fill(0.0F);
   processed_frame_.fill(0.0F);
   frame_position_ = 0;
-  bypassed_ = false;
 }
 
 }  // namespace ncs

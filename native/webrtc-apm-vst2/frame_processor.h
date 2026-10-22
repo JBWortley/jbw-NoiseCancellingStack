@@ -11,7 +11,7 @@ class FrameProcessor {
 
   virtual bool ProcessFrame(
       const std::array<float, 160>& input,
-      std::array<float, 160>& output) noexcept = 0;
+      std::array<float, 160>& output) = 0;
 };
 
 }  // namespace ncs

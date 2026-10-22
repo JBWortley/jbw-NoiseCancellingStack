@@ -14,6 +14,10 @@ $cache = Join-Path $root 'vendor\cache'
 $sourceCache = Join-Path $root 'vendor\source'
 $toolsDirectory = Join-Path $root 'artifacts\native-tools'
 $repositorySourceDirectory = Join-Path $root 'native\webrtc-apm-vst2'
+$singleThreadedCapturePatch = @{
+    Path = Join-Path $repositorySourceDirectory 'patches\webrtc-single-threaded-capture.patch'
+    Sha256 = '7D85700750862534BB3857E8CF562B44176BB5150420DF308CE6FB6821690FFE'
+}
 $needsWebRtc = -not $CoreOnly
 $buildLeaf = if ($needsWebRtc) { 'native-build' } else { 'native-core' }
 $buildDirectory = Join-Path $root "artifacts\$buildLeaf"
@@ -121,6 +125,16 @@ function New-NativeSourceTree {
     New-Item -ItemType Directory -Path $subprojects -Force | Out-Null
     Copy-Item -LiteralPath $webRtcRoot.FullName `
         -Destination (Join-Path $subprojects 'webrtc-audio-processing') -Recurse -Force
+
+    $actualPatchHash = (Get-FileHash -LiteralPath $singleThreadedCapturePatch.Path -Algorithm SHA256).Hash
+    if ($actualPatchHash -ne $singleThreadedCapturePatch.Sha256) {
+        throw "Checksum mismatch for the reviewed WebRTC single-thread patch: expected $($singleThreadedCapturePatch.Sha256), got $actualPatchHash"
+    }
+    & git -C $root apply --check --directory=artifacts/native-source/project --whitespace=error-all $singleThreadedCapturePatch.Path
+    if ($LASTEXITCODE -ne 0) { throw 'The reviewed WebRTC single-thread patch no longer applies cleanly.' }
+    & git -C $root apply --directory=artifacts/native-source/project --whitespace=error-all $singleThreadedCapturePatch.Path
+    if ($LASTEXITCODE -ne 0) { throw 'Could not apply the reviewed WebRTC single-thread patch.' }
+
     $packageCache = Join-Path $subprojects 'packagecache'
     New-Item -ItemType Directory -Path $packageCache -Force | Out-Null
     Copy-Item -LiteralPath $abseilArchive.Path -Destination $packageCache -Force

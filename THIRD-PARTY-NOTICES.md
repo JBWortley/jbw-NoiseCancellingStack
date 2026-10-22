@@ -34,7 +34,14 @@ The unmodified upstream license is extracted from the corresponding-source archi
 - Source archive SHA-256: `028df34d5ed4a1015b7349d2a099efb27c17a68acefb5c1d448f833207f5db9a`
 - Corresponding source distributed alongside releases: `webrtc-audio-processing-3a6b666a906da6cb3c6f9d474fab21c2ba739f22.zip`
 
-The build statically links WebRTC APM into `webrtc_apm_16k.dll`. The installer includes the standalone project's `COPYING`, WebRTC's `LICENSE`, and WebRTC's `PATENTS` files. The source archive retains notices for bundled FFT, RNNoise, and other compatible components.
+The build statically links WebRTC APM into `webrtc_apm_16k.dll`. The installer includes the standalone project's `COPYING`, WebRTC's `LICENSE`, WebRTC's `PATENTS`, and the notices for the linked components below:
+
+- Ooura FFT: `licenses\WebRTC-Ooura-LICENSE.txt`
+- WebRTC FFT: `licenses\WebRTC-FFT-LICENSE.txt`
+- PFFFT: `licenses\WebRTC-PFFFT-LICENSE.txt`
+- WebRTC RNNoise: `licenses\WebRTC-RNNoise-COPYING.txt`
+
+The corresponding source archive retains the original source and notices for these components.
 
 ## Abseil 20250814.1
 

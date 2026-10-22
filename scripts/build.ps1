@@ -227,6 +227,22 @@ Expand-ZipEntry `
     -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
     -EntryName "$webRtcArchiveRoot/webrtc/PATENTS" `
     -Destination (Join-Path $artifacts 'licenses\WebRTC-PATENTS.txt')
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
+    -EntryName "$webRtcArchiveRoot/webrtc/common_audio/third_party/ooura/LICENSE" `
+    -Destination (Join-Path $artifacts 'licenses\WebRTC-Ooura-LICENSE.txt')
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
+    -EntryName "$webRtcArchiveRoot/webrtc/modules/third_party/fft/LICENSE" `
+    -Destination (Join-Path $artifacts 'licenses\WebRTC-FFT-LICENSE.txt')
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
+    -EntryName "$webRtcArchiveRoot/webrtc/third_party/pffft/LICENSE" `
+    -Destination (Join-Path $artifacts 'licenses\WebRTC-PFFFT-LICENSE.txt')
+Expand-ZipEntry `
+    -ZipPath (Join-Path $vendorSource "$webRtcArchiveRoot.zip") `
+    -EntryName "$webRtcArchiveRoot/webrtc/third_party/rnnoise/COPYING" `
+    -Destination (Join-Path $artifacts 'licenses\WebRTC-RNNoise-COPYING.txt')
 $abseilLicense = Join-Path $artifacts 'native-source\project\subprojects\abseil-cpp-20250814.1\LICENSE'
 if (-not (Test-Path -LiteralPath $abseilLicense)) { throw 'Abseil license was not found in the verified native source tree.' }
 Copy-Item -LiteralPath $abseilLicense -Destination (Join-Path $artifacts 'licenses\Abseil-LICENSE.txt') -Force

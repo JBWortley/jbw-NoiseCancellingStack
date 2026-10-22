@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <limits>
 #include <numeric>
+#include <stdexcept>
 #include <vector>
 
 namespace {
@@ -78,6 +79,18 @@ class FailOnFrameProcessor final : public FrameProcessor {
 
  private:
   std::size_t fail_on_frame_;
+};
+
+class ThrowingProcessor final : public FrameProcessor {
+ public:
+  bool ProcessFrame(
+      const std::array<float, FrameAdapter::kFrameSamples>&,
+      std::array<float, FrameAdapter::kFrameSamples>&) override {
+    ++calls;
+    throw std::runtime_error("synthetic processor failure");
+  }
+
+  std::size_t calls = 0;
 };
 
 std::vector<float> Sequence(std::size_t count, float offset = 1.0F) {
@@ -220,6 +233,28 @@ void MidBlockFailureDoesNotDropPartiallyBufferedSamples() {
   NCS_REQUIRE(adapter.bypassed());
 }
 
+void ExceptionPermanentlyUsesDelayedDryAudioAcrossReset() {
+  ThrowingProcessor processor;
+  FrameAdapter adapter(processor);
+  auto input = Sequence(480);
+  std::vector<float> output(input.size(), -1.0F);
+
+  adapter.ProcessBlock(input.data(), output.data(), input.size());
+
+  RequireDelayed(input, output, 1.0F);
+  NCS_REQUIRE(adapter.bypassed());
+  NCS_REQUIRE(processor.calls == 1);
+
+  adapter.Reset();
+  auto second_input = Sequence(320, 2000.0F);
+  std::vector<float> second_output(second_input.size(), -1.0F);
+  adapter.ProcessBlock(second_input.data(), second_output.data(), second_input.size());
+
+  RequireDelayed(second_input, second_output, 1.0F);
+  NCS_REQUIRE(adapter.bypassed());
+  NCS_REQUIRE(processor.calls == 1);
+}
+
 }  // namespace
 
 int main() {
@@ -233,5 +268,6 @@ int main() {
       {"permanent bypass", FailurePermanentlyUsesDelayedDryAudio},
       {"non-finite rejection", NonFiniteOutputTriggersDelayedDryAudio},
       {"partial-frame failure", MidBlockFailureDoesNotDropPartiallyBufferedSamples},
+      {"exception enters permanent bypass", ExceptionPermanentlyUsesDelayedDryAudioAcrossReset},
   });
 }

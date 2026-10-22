@@ -46,32 +46,27 @@ WebRtcProcessor::WebRtcProcessor() noexcept {
 
 bool WebRtcProcessor::ProcessFrame(
     const std::array<float, 160>& input,
-    std::array<float, 160>& output) noexcept {
+    std::array<float, 160>& output) {
   if (!ready_ || !audio_processing_) {
     return false;
   }
 
-  try {
-    const float* source[] = {input.data()};
-    float* destination[] = {output.data()};
-    if (audio_processing_->ProcessStream(
-            source, stream_config_, stream_config_, destination)
-        != webrtc::AudioProcessing::kNoError) {
-      ready_ = false;
-      return false;
-    }
-
-    if (!std::all_of(output.begin(), output.end(), [](float sample) {
-          return std::isfinite(sample);
-        })) {
-      ready_ = false;
-      return false;
-    }
-    return true;
-  } catch (...) {
+  const float* source[] = {input.data()};
+  float* destination[] = {output.data()};
+  if (audio_processing_->ProcessStream(
+          source, stream_config_, stream_config_, destination)
+      != webrtc::AudioProcessing::kNoError) {
     ready_ = false;
     return false;
   }
+
+  if (!std::all_of(output.begin(), output.end(), [](float sample) {
+        return std::isfinite(sample);
+      })) {
+    ready_ = false;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace ncs

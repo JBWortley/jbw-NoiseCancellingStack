@@ -18,7 +18,7 @@ class WebRtcProcessor final : public FrameProcessor {
 
   bool ProcessFrame(
       const std::array<float, 160>& input,
-      std::array<float, 160>& output) noexcept override;
+      std::array<float, 160>& output) override;
 
   [[nodiscard]] bool ready() const noexcept { return ready_; }
 

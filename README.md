@@ -104,7 +104,7 @@ Requirements:
 
 - Windows 10 or Windows 11 x64
 - .NET SDK 9.0.304, or a compatible patch selected by `global.json`
-- Visual Studio 2022 C++ build tools and Python 3
+- Visual Studio 2022 C++ build tools, Python 3, and Git for Windows
 - Inno Setup 6
 
 Run:

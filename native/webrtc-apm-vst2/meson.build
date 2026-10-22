@@ -12,6 +12,7 @@ ncs_webrtc_werror = ncs_werror + cpp.get_supported_arguments(
   '/wd4068',  # Clang diagnostic pragmas in public WebRTC headers.
   '/wd4100',  # Intentionally unused extension parameters in WebRTC headers.
   '/wd4146',  # Checked unsigned arithmetic templates in WebRTC headers.
+  '/wd4191',  # Test-only IAT instrumentation converts imported function pointers.
 )
 ncs_fst_werror = ncs_werror + cpp.get_supported_arguments(
   '/wd4191',  # GetProcAddress is the Windows ABI boundary for VST exports.

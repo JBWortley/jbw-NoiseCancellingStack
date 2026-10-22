@@ -10,6 +10,7 @@ public static class ProductConstants
     public const string StateSchemaVersion = "1";
     public const string EqualizerApoVersion = "1.4.2";
     public const string RnNoiseVersion = "1.10";
+    public const string RnNoisePluginSha256 = "7DEBDFC4843461C47B23AC7A736B4663FE581643563AE764CDE395E006004080";
 
     public const string EqualizerApoPreMixClsid = "{EACD2258-FCAC-4FF4-B36D-419E924A6D79}";
     public const string EqualizerApoPostMixClsid = "{EC1CC9CE-FAED-4822-828A-82A81A6F018F}";

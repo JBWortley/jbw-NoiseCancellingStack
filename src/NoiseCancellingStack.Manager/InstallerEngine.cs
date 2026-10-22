@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-using System.Security.Cryptography;
 using Microsoft.Win32;
 
 namespace NoiseCancellingStack;
@@ -8,8 +7,6 @@ public sealed class InstallerEngine
 {
     // This class is the transaction coordinator. File/config work happens before endpoint work,
     // while EndpointRegistry owns the finer-grained write-ahead journal for each registry change.
-    private const string ExpectedMonoPluginSha256 = "7DEBDFC4843461C47B23AC7A736B4663FE581643563AE764CDE395E006004080";
-
     private readonly InstallStateStore stateStore;
     private readonly OperationLogger logger;
 
@@ -21,7 +18,12 @@ public sealed class InstallerEngine
 
     public OperationReport InstallOrRepair(bool createMaintenanceTask)
     {
-        ValidatePlatformAndDependencies();
+        ValidatePlatformAndEqualizerApo();
+        new PayloadValidator(new NativeWebRtcPluginProbe()).Validate(
+            ProductConstants.MonoPluginPath,
+            ProductConstants.RnNoisePluginSha256,
+            ProductConstants.WebRtcPluginPath,
+            GeneratedPayloadHashes.WebRtcApmPluginSha256);
         var state = stateStore.Load();
         var configDirectory = GetEqualizerApoConfigDirectory();
         // A nonempty journal can drive elevated registry restoration. Only accept one when the
@@ -137,7 +139,7 @@ public sealed class InstallerEngine
 
     public IReadOnlyList<EndpointSummary> Status() => new EndpointRegistry(stateStore, logger).List();
 
-    private void ValidatePlatformAndDependencies()
+    private void ValidatePlatformAndEqualizerApo()
     {
         if (!OperatingSystem.IsWindowsVersionAtLeast(10) || !Environment.Is64BitOperatingSystem || !Environment.Is64BitProcess)
         {
@@ -151,17 +153,6 @@ public sealed class InstallerEngine
                 $"Equalizer APO {ProductConstants.EqualizerApoVersion} is required; found {installedVersion ?? "none"}.");
         }
 
-        if (!File.Exists(ProductConstants.MonoPluginPath))
-        {
-            throw new FileNotFoundException("The RNNoise mono plugin is missing.", ProductConstants.MonoPluginPath);
-        }
-
-        using var stream = File.OpenRead(ProductConstants.MonoPluginPath);
-        var digest = Convert.ToHexString(SHA256.HashData(stream));
-        if (!string.Equals(digest, ExpectedMonoPluginSha256, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidDataException($"RNNoise plugin checksum mismatch: {digest}");
-        }
     }
 
     private static string? GetInstalledEqualizerApoVersion()

@@ -21,8 +21,30 @@
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <WebRtcApmPluginSha256 Condition="'$(WebRtcApmPluginSha256)' == ''">DEVELOPMENT-BUILD-NO-WEBRTC-PAYLOAD-HASH</WebRtcApmPluginSha256>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
   </ItemGroup>
+  <Target Name="GeneratePayloadHashes" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <GeneratedPayloadHashesFile>$(IntermediateOutputPath)GeneratedPayloadHashes.g.cs</GeneratedPayloadHashesFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <_GeneratedPayloadHashLine Include="// &lt;auto-generated /&gt;" />
+      <_GeneratedPayloadHashLine Include="namespace NoiseCancellingStack%3B" />
+      <_GeneratedPayloadHashLine Include="internal static class GeneratedPayloadHashes" />
+      <_GeneratedPayloadHashLine Include="{" />
+      <_GeneratedPayloadHashLine Include="    internal const string WebRtcApmPluginSha256 = &quot;$(WebRtcApmPluginSha256)&quot;%3B" />
+      <_GeneratedPayloadHashLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile
+      File="$(GeneratedPayloadHashesFile)"
+      Lines="@(_GeneratedPayloadHashLine)"
+      Overwrite="true"
+      Encoding="UTF-8" />
+    <ItemGroup>
+      <Compile Include="$(GeneratedPayloadHashesFile)" />
+    </ItemGroup>
+  </Target>
 </Project>

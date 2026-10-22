@@ -62,7 +62,7 @@ public static class MaintenanceTask
         logger.Write("Removed the startup microphone repair task (or it was already absent).");
     }
 
-    private static string BuildTaskXml(string managerPath)
+    internal static string BuildTaskXml(string managerPath)
     {
         var command = System.Security.SecurityElement.Escape(managerPath)
             ?? throw new ArgumentException("The manager path could not be encoded.", nameof(managerPath));
@@ -73,7 +73,7 @@ public static class MaintenanceTask
             <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
               <RegistrationInfo>
                 <Author>Noise Cancelling Stack</Author>
-                <Description>Registers newly discovered capture endpoints for RNNoise filtering.</Description>
+                <Description>Maintains noise suppression for newly discovered capture endpoints.</Description>
               </RegistrationInfo>
               <Triggers>
                 <BootTrigger>
@@ -96,7 +96,7 @@ public static class MaintenanceTask
                 <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
                 <WakeToRun>false</WakeToRun>
                 <Enabled>true</Enabled>
-                <Hidden>false</Hidden>
+                <Hidden>true</Hidden>
                 <ExecutionTimeLimit>PT15M</ExecutionTimeLimit>
                 <Priority>7</Priority>
               </Settings>

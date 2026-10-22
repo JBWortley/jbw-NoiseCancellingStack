@@ -48,6 +48,19 @@ public sealed class InstallStateStoreTests
     }
 
     [Fact]
+    public void Save_StampsCurrentProductVersionWhenUpgradingOldJournal()
+    {
+        WithStore((store, _) =>
+        {
+            var state = new InstallState { ProductVersion = "1.0.0" };
+
+            store.Save(state);
+
+            Assert.Equal("1.1.0", store.Load().ProductVersion);
+        });
+    }
+
+    [Fact]
     public void Load_RejectsNullEndpointCollection()
     {
         WithStore((store, path) =>

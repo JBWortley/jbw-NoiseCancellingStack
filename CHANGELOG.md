@@ -7,6 +7,8 @@
 - Added a fixed 10 ms delay to the 16 kHz processor so arbitrary host block sizes remain ordered and failure can switch to delayed dry audio safely.
 - Added pre-mutation checksum and synthetic self-test validation for both native payloads, plus hidden SYSTEM startup repair using the existing one-minute boot trigger.
 - Added pinned WebRTC, Abseil, Meson, Ninja, FST, license, patent, and corresponding-source packaging.
+- Upgrade repairs now stamp the durable state journal with the installed product version.
+- Explicit installer runs now restart Windows Audio even when only plug-in payloads changed; unchanged manual and scheduled repairs remain non-disruptive.
 - Applications with their own filtering can cause double suppression; disable one layer if speech sounds metallic, pumps, or loses quiet syllables.
 
 ## 1.0.1 (unreleased)

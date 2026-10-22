@@ -5,6 +5,46 @@ namespace NoiseCancellingStack.Tests;
 
 public sealed class InstallerEngineOrderingTests
 {
+    [Theory]
+    [InlineData(true, false, 0, true)]
+    [InlineData(false, true, 0, true)]
+    [InlineData(false, false, 1, true)]
+    [InlineData(false, false, 0, false)]
+    public void ShouldRestartAudio_CoversPayloadReplacementAndManagedMutations(
+        bool forceAudioRestart,
+        bool configChanged,
+        int attached,
+        bool expected)
+    {
+        var report = new OperationReport
+        {
+            ConfigChanged = configChanged,
+            Attached = attached
+        };
+
+        Assert.Equal(expected, InstallerEngine.ShouldRestartAudio(forceAudioRestart, report));
+    }
+
+    [Fact]
+    public void Program_ForcesRestartOnlyForExplicitInstall()
+    {
+        var sourcePath = Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "NoiseCancellingStack.Manager",
+            "Program.cs");
+        var source = string.Concat(File.ReadAllText(sourcePath).Where(character => !char.IsWhiteSpace(character)));
+
+        Assert.Contains(
+            "\"install\"=>Report(engine.InstallOrRepair(createMaintenanceTask:true,forceAudioRestart:true),logger)",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"repair\"=>Report(engine.InstallOrRepair(createMaintenanceTask:!args.Contains(\"--scheduled\",StringComparer.OrdinalIgnoreCase),forceAudioRestart:false),logger)",
+            source,
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public void InstallOrRepair_ValidatesPayloadsBeforeAnyMutation()
     {

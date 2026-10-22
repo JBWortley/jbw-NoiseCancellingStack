@@ -16,7 +16,7 @@ public sealed class InstallerEngine
         this.logger = logger;
     }
 
-    public OperationReport InstallOrRepair(bool createMaintenanceTask)
+    public OperationReport InstallOrRepair(bool createMaintenanceTask, bool forceAudioRestart)
     {
         ValidatePlatformAndEqualizerApo();
         new PayloadValidator(new NativeWebRtcPluginProbe()).Validate(
@@ -71,7 +71,7 @@ public sealed class InstallerEngine
             }
         }
 
-        if (report.ConfigChanged || report.Attached > 0)
+        if (ShouldRestartAudio(forceAudioRestart, report))
         {
             TryRestartAudio(report);
         }
@@ -138,6 +138,9 @@ public sealed class InstallerEngine
     }
 
     public IReadOnlyList<EndpointSummary> Status() => new EndpointRegistry(stateStore, logger).List();
+
+    internal static bool ShouldRestartAudio(bool forceAudioRestart, OperationReport report) =>
+        forceAudioRestart || report.ConfigChanged || report.Attached > 0;
 
     private void ValidatePlatformAndEqualizerApo()
     {

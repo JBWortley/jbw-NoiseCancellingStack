@@ -39,6 +39,7 @@ public sealed class InstallStateStore
         var directory = Path.GetDirectoryName(path)
             ?? throw new InvalidOperationException("The state path has no parent directory.");
         Directory.CreateDirectory(directory);
+        state.ProductVersion = ProductConstants.ProductVersion;
         state.UpdatedUtc = DateTimeOffset.UtcNow;
         Validate(state);
         var temporary = path + $".{Guid.NewGuid():N}.new";

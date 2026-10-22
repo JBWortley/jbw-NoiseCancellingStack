@@ -29,8 +29,10 @@ public static class Program
             var engine = new InstallerEngine(new InstallStateStore(), logger);
             return operation switch
             {
-                "install" => Report(engine.InstallOrRepair(createMaintenanceTask: true), logger),
-                "repair" => Report(engine.InstallOrRepair(createMaintenanceTask: !args.Contains("--scheduled", StringComparer.OrdinalIgnoreCase)), logger),
+                "install" => Report(engine.InstallOrRepair(createMaintenanceTask: true, forceAudioRestart: true), logger),
+                "repair" => Report(engine.InstallOrRepair(
+                    createMaintenanceTask: !args.Contains("--scheduled", StringComparer.OrdinalIgnoreCase),
+                    forceAudioRestart: false), logger),
                 "uninstall" => Report(engine.Uninstall(), logger),
                 "status" => PrintStatus(engine.Status(), logger),
                 "help" or "--help" or "-h" => PrintHelp(logger),

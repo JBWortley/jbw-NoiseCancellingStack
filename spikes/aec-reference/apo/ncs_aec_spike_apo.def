@@ -1,0 +1,7 @@
+; SPDX-License-Identifier: MIT
+LIBRARY ncs_aec_spike_apo
+EXPORTS
+    DllGetClassObject   PRIVATE
+    DllCanUnloadNow     PRIVATE
+    DllRegisterServer   PRIVATE
+    DllUnregisterServer PRIVATE

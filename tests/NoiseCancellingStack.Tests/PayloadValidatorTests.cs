@@ -101,6 +101,62 @@ public sealed class PayloadValidatorTests
         Assert.Equal(1, probe.CallCount);
     }
 
+    [Fact]
+    public void ValidateEchoCanceller_RejectsWrongHashBeforeProbe()
+    {
+        using var fixture = new PayloadFixture();
+        File.AppendAllText(fixture.EchoCancellerPath, "corrupt");
+        var echoProbe = new FakeProbe();
+
+        var error = Assert.Throws<InvalidDataException>(() =>
+            new PayloadValidator(new FakeProbe(), echoProbe).ValidateEchoCanceller(
+                fixture.EchoCancellerPath,
+                fixture.EchoCancellerHash));
+
+        Assert.Contains("echo cancellation", error.Message, StringComparison.Ordinal);
+        Assert.Equal(0, echoProbe.CallCount);
+    }
+
+    [Fact]
+    public void ValidateEchoCanceller_RejectsMissingPayload()
+    {
+        using var fixture = new PayloadFixture();
+        File.Delete(fixture.EchoCancellerPath);
+        var echoProbe = new FakeProbe();
+
+        Assert.Throws<FileNotFoundException>(() =>
+            new PayloadValidator(new FakeProbe(), echoProbe).ValidateEchoCanceller(
+                fixture.EchoCancellerPath,
+                fixture.EchoCancellerHash));
+        Assert.Equal(0, echoProbe.CallCount);
+    }
+
+    [Fact]
+    public void ValidateEchoCanceller_RunsOnlyTheEchoCancellerSelfTest()
+    {
+        using var fixture = new PayloadFixture();
+        var webRtcProbe = new FakeProbe();
+        var echoProbe = new FakeProbe();
+
+        new PayloadValidator(webRtcProbe, echoProbe).ValidateEchoCanceller(
+            fixture.EchoCancellerPath,
+            fixture.EchoCancellerHash.ToLowerInvariant());
+
+        Assert.Equal(0, webRtcProbe.CallCount);
+        Assert.Equal(1, echoProbe.CallCount);
+        Assert.Equal(Path.GetFullPath(fixture.EchoCancellerPath), echoProbe.LastPath);
+    }
+
+    [Fact]
+    public void ValidateEchoCanceller_RequiresAConfiguredProbe()
+    {
+        using var fixture = new PayloadFixture();
+        Assert.Throws<InvalidOperationException>(() =>
+            new PayloadValidator(new FakeProbe()).ValidateEchoCanceller(
+                fixture.EchoCancellerPath,
+                fixture.EchoCancellerHash));
+    }
+
     private sealed class FakeProbe : INativePluginProbe
     {
         public int CallCount { get; private set; }
@@ -129,16 +185,21 @@ public sealed class PayloadValidatorTests
             Directory.CreateDirectory(directory);
             RnNoisePath = Path.Combine(directory, "rnnoise_mono.dll");
             WebRtcPath = Path.Combine(directory, "webrtc_apm_16k.dll");
+            EchoCancellerPath = Path.Combine(directory, "ncs_aec_apo.dll");
             File.WriteAllBytes(RnNoisePath, [1, 2, 3, 4]);
             File.WriteAllBytes(WebRtcPath, [5, 6, 7, 8]);
+            File.WriteAllBytes(EchoCancellerPath, [9, 10, 11, 12]);
             RnNoiseHash = Hash(RnNoisePath);
             WebRtcHash = Hash(WebRtcPath);
+            EchoCancellerHash = Hash(EchoCancellerPath);
         }
 
         public string RnNoisePath { get; }
         public string WebRtcPath { get; }
         public string RnNoiseHash { get; }
         public string WebRtcHash { get; }
+        public string EchoCancellerPath { get; }
+        public string EchoCancellerHash { get; }
 
         public void Dispose() => Directory.Delete(directory, recursive: true);
 

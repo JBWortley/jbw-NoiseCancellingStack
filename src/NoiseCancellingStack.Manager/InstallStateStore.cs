@@ -82,21 +82,53 @@ public sealed class InstallStateStore
             {
                 throw new InvalidDataException($"Duplicate endpoint identifier in state: {endpoint.EndpointId}");
             }
-            RequireExactKeys(endpoint.OriginalFx, ProductConstants.ManagedFxNames, "OriginalFx");
-            RequireExactKeys(endpoint.InstalledFx, ProductConstants.ManagedFxNames, "InstalledFx");
-            RequireExactKeys(endpoint.OriginalChild, ProductConstants.ManagedChildNames, "OriginalChild");
-            RequireExactKeys(endpoint.InstalledChild, ProductConstants.ManagedChildNames, "InstalledChild");
+            RequireKeys(endpoint.OriginalProperties, [], ProductConstants.ManagedPropertyNames, "OriginalProperties");
+            RequireKeys(endpoint.InstalledProperties, [], ProductConstants.ManagedPropertyNames, "InstalledProperties");
+            if (!endpoint.OriginalProperties!.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(endpoint.InstalledProperties!.Keys))
+            {
+                throw new InvalidDataException("State fields OriginalProperties and InstalledProperties track different values.");
+            }
+            if (endpoint.EchoCancellerOnly)
+            {
+                // Owns exactly the MFX value and MFX mode list of a key that already existed, and no
+                // Equalizer APO child record, so restoration can never touch Equalizer APO's values.
+                RequireKeys(endpoint.OriginalFx, ProductConstants.EchoCancellerOnlyFxNames, [], "OriginalFx");
+                RequireKeys(endpoint.InstalledFx, ProductConstants.EchoCancellerOnlyFxNames, [], "InstalledFx");
+                RequireKeys(endpoint.OriginalChild, [], [], "OriginalChild");
+                RequireKeys(endpoint.InstalledChild, [], [], "InstalledChild");
+                if (!endpoint.FxKeyExisted || endpoint.Mode != EndpointInstallMode.SfxEfx)
+                {
+                    throw new InvalidDataException("An echo-canceller-only endpoint record is inconsistent.");
+                }
+                continue;
+            }
+            RequireKeys(endpoint.OriginalFx, ProductConstants.ManagedFxNames, ProductConstants.OptionalManagedFxNames, "OriginalFx");
+            RequireKeys(endpoint.InstalledFx, ProductConstants.ManagedFxNames, ProductConstants.OptionalManagedFxNames, "InstalledFx");
+            // An optional value is journaled as an original/installed pair or not at all; a half
+            // record could not be restored safely.
+            if (!endpoint.OriginalFx!.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(endpoint.InstalledFx!.Keys))
+            {
+                throw new InvalidDataException("State fields OriginalFx and InstalledFx track different registry values.");
+            }
+            RequireKeys(endpoint.OriginalChild, ProductConstants.ManagedChildNames, [], "OriginalChild");
+            RequireKeys(endpoint.InstalledChild, ProductConstants.ManagedChildNames, [], "InstalledChild");
         }
     }
 
-    private static void RequireExactKeys(
+    // Every required name must be present; optional names may be present; nothing else may be.
+    private static void RequireKeys(
         IReadOnlyDictionary<string, RegistryValueSnapshot>? values,
-        IEnumerable<string> expected,
+        IEnumerable<string> required,
+        IEnumerable<string> optional,
         string field)
     {
-        if (values is null
-            || values.Values.Any(value => value is null)
-            || !values.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(expected))
+        if (values is null || values.Values.Any(value => value is null))
+        {
+            throw new InvalidDataException($"Unexpected registry value names in state field {field}.");
+        }
+        var keys = values.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var allowed = required.Concat(optional).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!keys.IsSupersetOf(required) || !keys.IsSubsetOf(allowed))
         {
             throw new InvalidDataException($"Unexpected registry value names in state field {field}.");
         }

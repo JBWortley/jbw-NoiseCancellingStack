@@ -2,7 +2,7 @@
 project(
   'noise-cancelling-stack-webrtc-apm-vst2',
   'cpp',
-  version: '1.1.0',
+  version: '1.2.0',
   default_options: ['cpp_std=c++20', 'warning_level=3', 'werror=false', 'b_vscrt=mt'],
 )
 
@@ -28,6 +28,19 @@ frame_adapter_tests = executable(
 )
 
 test('frame-adapter', frame_adapter_tests)
+
+# Echo cancellation APO (MIT-licensed sources under aec/; no FST or GPL dependencies).
+aec_include = include_directories('aec')
+aec_test_include = include_directories('aec/tests')
+
+reference_ring_tests = executable(
+  'reference-ring-tests',
+  ['aec/tests/reference_ring_tests.cpp'],
+  include_directories: [aec_include, aec_test_include],
+  cpp_args: ncs_werror,
+)
+
+test('reference-ring', reference_ring_tests)
 
 if get_option('with_webrtc')
   webrtc_subproject = subproject(
@@ -83,5 +96,57 @@ if get_option('with_webrtc')
     'vst-smoke',
     vst_smoke_host,
     args: [webrtc_plugin.full_path()],
+  )
+
+  echo_processor_library = static_library(
+    'ncs-echo-processor',
+    ['aec/echo_processor.cpp'],
+    include_directories: aec_include,
+    dependencies: webrtc_system_dependency,
+    cpp_args: ncs_webrtc_werror,
+  )
+
+  echo_processor_tests = executable(
+    'echo-processor-tests',
+    ['aec/tests/echo_processor_tests.cpp'],
+    include_directories: [aec_include, aec_test_include],
+    link_with: echo_processor_library,
+    dependencies: webrtc_system_dependency,
+    cpp_args: ncs_webrtc_werror,
+  )
+
+  test('echo-processor', echo_processor_tests, timeout: 300)
+
+  # Windows SDK APO support: base class, media types, registration, COM.
+  apo_system_libraries = []
+  foreach name : ['audiobaseprocessingobject', 'audiomediatypecrt', 'audioeng',
+                  'legacy_stdio_definitions', 'ole32', 'advapi32']
+    apo_system_libraries += cpp.find_library(name)
+  endforeach
+
+  aec_apo = shared_module(
+    'ncs_aec_apo',
+    ['aec/aec_apo.cpp'],
+    name_prefix: '',
+    include_directories: aec_include,
+    link_with: echo_processor_library,
+    dependencies: [webrtc_system_dependency] + apo_system_libraries,
+    cpp_args: ncs_webrtc_werror,
+    vs_module_defs: 'aec/ncs_aec_apo.def',
+  )
+
+  aec_apo_smoke_host = executable(
+    'aec-apo-smoke-host',
+    ['aec/tests/aec_apo_smoke_host.cpp'],
+    include_directories: aec_test_include,
+    dependencies: [cpp.find_library('audiomediatypecrt'), cpp.find_library('ole32')],
+    cpp_args: ncs_werror,
+  )
+
+  test(
+    'aec-apo-smoke',
+    aec_apo_smoke_host,
+    args: [aec_apo.full_path()],
+    timeout: 300,
   )
 endif

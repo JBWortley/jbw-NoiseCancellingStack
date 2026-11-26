@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$appVersion = '1.1.0'
+$appVersion = '1.2.0'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $vendorCache = Join-Path $root 'vendor\cache'
 $vendorSource = Join-Path $root 'vendor\source'
@@ -185,10 +185,13 @@ if (-not (Test-Path -LiteralPath $nativePropsPath)) { throw 'Native payload mani
 [xml]$nativeProps = Get-Content -LiteralPath $nativePropsPath -Raw
 $webRtcPluginHash = [string]$nativeProps.Project.PropertyGroup.WebRtcApmPluginSha256
 if ($webRtcPluginHash -notmatch '^[0-9A-F]{64}$') { throw 'Native payload manifest has an invalid SHA-256 digest.' }
+$echoCancellerHash = [string]$nativeProps.Project.PropertyGroup.EchoCancellerApoSha256
+if ($echoCancellerHash -notmatch '^[0-9A-F]{64}$') { throw 'Native payload manifest has an invalid echo canceller SHA-256 digest.' }
 
 if (-not $SkipTests) {
     & dotnet test (Join-Path $root 'NoiseCancellingStack.slnx') --configuration Release --nologo `
-        "-p:WebRtcApmPluginSha256=$webRtcPluginHash"
+        "-p:WebRtcApmPluginSha256=$webRtcPluginHash" `
+        "-p:EchoCancellerApoSha256=$echoCancellerHash"
     if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 }
 
@@ -253,6 +256,7 @@ Copy-Item -LiteralPath $abseilLicense -Destination (Join-Path $artifacts 'licens
     --self-contained true `
     --output (Join-Path $artifacts 'publish') `
     "-p:WebRtcApmPluginSha256=$webRtcPluginHash" `
+    "-p:EchoCancellerApoSha256=$echoCancellerHash" `
     --nologo
 if ($LASTEXITCODE -ne 0) { throw 'Manager publish failed.' }
 

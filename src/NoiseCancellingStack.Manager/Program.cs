@@ -20,6 +20,12 @@ public static class Program
         try
         {
             EnsureAdministrator();
+            if (operation == "watch")
+            {
+                // The long-running watcher never takes the operation lock: it would block every
+                // install, repair, and uninstall. Uninstall stops it before restoring anything.
+                return RawCaptureWatcher.Run(new InstallStateStore(), logger, CancellationToken.None);
+            }
             using var mutex = new Mutex(initiallyOwned: true, @"Global\NoiseCancellingStack.Manager", out var ownsMutex);
             if (!ownsMutex)
             {
@@ -63,8 +69,10 @@ public static class Program
     private static int Report(OperationReport report, OperationLogger logger)
     {
         logger.Write(
-            $"Result: attached={report.Attached}, already-attached={report.AlreadyAttached}, " +
-            $"restored={report.Restored}, skipped={report.Skipped}, conflicts={report.Conflicts}.");
+            $"Result: attached={report.Attached}, echo-cancellers-attached={report.EchoCancellersAttached}, " +
+            $"echo-cancellers-removed={report.EchoCancellersRemoved}, " +
+            $"already-attached={report.AlreadyAttached}, restored={report.Restored}, " +
+            $"skipped={report.Skipped}, conflicts={report.Conflicts}.");
         foreach (var message in report.Messages)
         {
             logger.Write(message);
@@ -81,10 +89,21 @@ public static class Program
                 $"{(endpoint.EqualizerApoAttached ? "ATTACHED" : "NOT ATTACHED"),-12} " +
                 $"{endpoint.SampleRate,6} Hz  " +
                 $"{AudioRoutePlanner.Label(AudioRoutePlanner.Select(endpoint.SampleRate)),-11} " +
+                $"{(endpoint.EchoCancellerAttached ? "AEC" : "-"),-4}" +
                 $"{endpoint.DisplayName}  {endpoint.EndpointId}");
         }
         logger.Write($"Attached {endpoints.Count(item => item.EqualizerApoAttached)} of {endpoints.Count} registered capture endpoints.");
+        logger.Write(
+            $"Echo cancellation on {endpoints.Count(item => item.EchoCancellerAttached)} endpoint(s)" +
+            (IsEchoCancellationDisabledByPolicy() ? " (disabled by policy: audio passes through unchanged)." : "."));
         return ExitSuccess;
+    }
+
+    private static bool IsEchoCancellationDisabledByPolicy()
+    {
+        using var hklm = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, ProductConstants.RegistryView);
+        using var settings = hklm.OpenSubKey(ProductConstants.SettingsRoot, writable: false);
+        return settings?.GetValue(ProductConstants.DisableEchoCancellationValue) is int value && value != 0;
     }
 
     private static int PrintHelp(OperationLogger logger)

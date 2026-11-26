@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [switch]$CoreOnly,
-    [ValidateSet('frame-adapter', 'webrtc-processor', 'vst-smoke')]
+    [ValidateSet('frame-adapter', 'webrtc-processor', 'vst-smoke', 'reference-ring', 'echo-processor', 'aec-apo-smoke')]
     [string]$TestFilter
 )
 
@@ -17,6 +17,11 @@ $repositorySourceDirectory = Join-Path $root 'native\webrtc-apm-vst2'
 $singleThreadedCapturePatch = @{
     Path = Join-Path $repositorySourceDirectory 'patches\webrtc-single-threaded-capture.patch'
     Sha256 = '7D85700750862534BB3857E8CF562B44176BB5150420DF308CE6FB6821690FFE'
+}
+# Applied after the capture patch: the echo canceller feeds render audio from the same thread.
+$singleThreadedRenderPatch = @{
+    Path = Join-Path $repositorySourceDirectory 'patches\webrtc-single-threaded-render.patch'
+    Sha256 = 'FCA79C76243FCE3B80D56012570BC229EED87DFB423AD37E482D3A7DDAE390BA'
 }
 $needsWebRtc = -not $CoreOnly
 $buildLeaf = if ($needsWebRtc) { 'native-build' } else { 'native-core' }
@@ -126,14 +131,16 @@ function New-NativeSourceTree {
     Copy-Item -LiteralPath $webRtcRoot.FullName `
         -Destination (Join-Path $subprojects 'webrtc-audio-processing') -Recurse -Force
 
-    $actualPatchHash = (Get-FileHash -LiteralPath $singleThreadedCapturePatch.Path -Algorithm SHA256).Hash
-    if ($actualPatchHash -ne $singleThreadedCapturePatch.Sha256) {
-        throw "Checksum mismatch for the reviewed WebRTC single-thread patch: expected $($singleThreadedCapturePatch.Sha256), got $actualPatchHash"
+    foreach ($patch in @($singleThreadedCapturePatch, $singleThreadedRenderPatch)) {
+        $actualPatchHash = (Get-FileHash -LiteralPath $patch.Path -Algorithm SHA256).Hash
+        if ($actualPatchHash -ne $patch.Sha256) {
+            throw "Checksum mismatch for the reviewed WebRTC patch $($patch.Path): expected $($patch.Sha256), got $actualPatchHash"
+        }
+        & git -C $root apply --check --directory=artifacts/native-source/project --whitespace=error-all $patch.Path
+        if ($LASTEXITCODE -ne 0) { throw "The reviewed WebRTC patch no longer applies cleanly: $($patch.Path)" }
+        & git -C $root apply --directory=artifacts/native-source/project --whitespace=error-all $patch.Path
+        if ($LASTEXITCODE -ne 0) { throw "Could not apply the reviewed WebRTC patch: $($patch.Path)" }
     }
-    & git -C $root apply --check --directory=artifacts/native-source/project --whitespace=error-all $singleThreadedCapturePatch.Path
-    if ($LASTEXITCODE -ne 0) { throw 'The reviewed WebRTC single-thread patch no longer applies cleanly.' }
-    & git -C $root apply --directory=artifacts/native-source/project --whitespace=error-all $singleThreadedCapturePatch.Path
-    if ($LASTEXITCODE -ne 0) { throw 'Could not apply the reviewed WebRTC single-thread patch.' }
 
     $packageCache = Join-Path $subprojects 'packagecache'
     New-Item -ItemType Directory -Path $packageCache -Force | Out-Null
@@ -217,31 +224,40 @@ if ($LASTEXITCODE -ne 0) { throw 'Native tests failed.' }
 if ($needsWebRtc) {
     $plugin = Join-Path $buildDirectory 'webrtc_apm_16k.dll'
     if (-not (Test-Path -LiteralPath $plugin)) { throw 'WebRTC VST2 payload was not produced.' }
+    $echoCanceller = Join-Path $buildDirectory 'ncs_aec_apo.dll'
+    if (-not (Test-Path -LiteralPath $echoCanceller)) { throw 'Echo cancellation APO payload was not produced.' }
     $payloadDirectory = Join-Path $root 'artifacts\payload'
     $nativeManifestDirectory = Join-Path $root 'artifacts\native'
     New-Item -ItemType Directory -Path $payloadDirectory -Force | Out-Null
     New-Item -ItemType Directory -Path $nativeManifestDirectory -Force | Out-Null
     Copy-Item -LiteralPath $plugin -Destination (Join-Path $payloadDirectory 'webrtc_apm_16k.dll') -Force
+    Copy-Item -LiteralPath $echoCanceller -Destination (Join-Path $payloadDirectory 'ncs_aec_apo.dll') -Force
 
     $pluginHash = (Get-FileHash -LiteralPath $plugin -Algorithm SHA256).Hash
+    $echoCancellerHash = (Get-FileHash -LiteralPath $echoCanceller -Algorithm SHA256).Hash
     $props = @"
 <Project>
   <PropertyGroup>
     <WebRtcApmPluginSha256>$pluginHash</WebRtcApmPluginSha256>
+    <EchoCancellerApoSha256>$echoCancellerHash</EchoCancellerApoSha256>
   </PropertyGroup>
 </Project>
 "@
     $props | Set-Content -LiteralPath (Join-Path $nativeManifestDirectory 'webrtc-apm.props') -Encoding UTF8
 
     if ([string]::IsNullOrWhiteSpace($TestFilter)) {
-        $dependencies = & dumpbin.exe /dependents $plugin
-        if ($LASTEXITCODE -ne 0) { throw 'Could not inspect WebRTC VST2 dependencies.' }
-        $dependencies | Write-Output
-        if ($dependencies -match '(?im)^\s*(MSVCP\d+|VCRUNTIME\d*|webrtc[^\s]*)\.dll\s*$') {
-            throw 'WebRTC VST2 has a forbidden dynamic runtime dependency.'
+        foreach ($payload in @($plugin, $echoCanceller)) {
+            $dependencies = & dumpbin.exe /dependents $payload
+            if ($LASTEXITCODE -ne 0) { throw "Could not inspect dependencies of $payload." }
+            $dependencies | Write-Output
+            if ($dependencies -match '(?im)^\s*(MSVCP\d+|VCRUNTIME\d*|webrtc[^\s]*)\.dll\s*$') {
+                throw "$payload has a forbidden dynamic runtime dependency."
+            }
         }
     }
 
     Write-Output "WebRTC APM payload: $plugin"
     Write-Output "WebRTC APM SHA-256: $pluginHash"
+    Write-Output "Echo cancellation APO payload: $echoCanceller"
+    Write-Output "Echo cancellation APO SHA-256: $echoCancellerHash"
 }

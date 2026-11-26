@@ -19,11 +19,13 @@ public sealed class InstallerEngine
     public OperationReport InstallOrRepair(bool createMaintenanceTask, bool forceAudioRestart)
     {
         ValidatePlatformAndEqualizerApo();
-        new PayloadValidator(new NativeWebRtcPluginProbe()).Validate(
+        var payloads = new PayloadValidator(NativeSelfTestProbe.WebRtcPlugin, NativeSelfTestProbe.EchoCanceller);
+        payloads.Validate(
             ProductConstants.MonoPluginPath,
             ProductConstants.RnNoisePluginSha256,
             ProductConstants.WebRtcPluginPath,
             GeneratedPayloadHashes.WebRtcApmPluginSha256);
+        payloads.ValidateEchoCanceller(ProductConstants.EchoCancellerPath, GeneratedPayloadHashes.EchoCancellerApoSha256);
         var state = stateStore.Load();
         var configDirectory = GetEqualizerApoConfigDirectory();
         // A nonempty journal can drive elevated registry restoration. Only accept one when the
@@ -93,6 +95,8 @@ public sealed class InstallerEngine
             logger.Write("Ignored a stale configuration path in the state file; the current Equalizer APO registry path is authoritative.");
         }
         SafetyBackup.Create("uninstall", configDirectory, logger);
+        // The watcher would otherwise re-disable raw capture that rollback has just restored.
+        MaintenanceTask.StopWatcher(logger);
 
         var report = new EndpointRegistry(stateStore, logger).DetachOwned(state);
         // Keep the executable, config, and task available when rollback is incomplete. Removing
@@ -140,7 +144,8 @@ public sealed class InstallerEngine
     public IReadOnlyList<EndpointSummary> Status() => new EndpointRegistry(stateStore, logger).List();
 
     internal static bool ShouldRestartAudio(bool forceAudioRestart, OperationReport report) =>
-        forceAudioRestart || report.ConfigChanged || report.Attached > 0;
+        forceAudioRestart || report.ConfigChanged || report.Attached > 0
+        || report.EchoCancellersAttached > 0 || report.EchoCancellersRemoved > 0;
 
     private void ValidatePlatformAndEqualizerApo()
     {
@@ -197,6 +202,8 @@ public sealed class InstallerEngine
     private static void Merge(OperationReport target, OperationReport source)
     {
         target.Attached += source.Attached;
+        target.EchoCancellersAttached += source.EchoCancellersAttached;
+        target.EchoCancellersRemoved += source.EchoCancellersRemoved;
         target.AlreadyAttached += source.AlreadyAttached;
         target.Restored += source.Restored;
         target.Skipped += source.Skipped;

@@ -1,0 +1,13 @@
+diff --git a/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc b/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc
+--- a/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc
++++ b/subprojects/webrtc-audio-processing/webrtc/modules/audio_processing/audio_processing_impl.cc
+@@ -1507,7 +1507,8 @@ int AudioProcessingImpl::ProcessReverseStream(const float* const* src,
+                                               const StreamConfig& output_config,
+                                               float* const* dest) {
+   TRACE_EVENT0("webrtc", "AudioProcessing::ProcessReverseStream_StreamConfig");
+-  MutexLock lock(&mutex_render_);
++  // Noise Cancelling Stack feeds render and capture audio to each APM instance from one audio
++  // thread at a time. Avoid upstream's cross-thread serialization in this callback-only use.
+   DenormalDisabler denormal_disabler;
+   RETURN_ON_ERR(
+       HandleUnsupportedAudioFormats(src, input_config, output_config, dest));

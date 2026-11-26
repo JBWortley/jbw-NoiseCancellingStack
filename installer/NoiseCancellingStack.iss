@@ -1,12 +1,14 @@
 ; SPDX-License-Identifier: MIT
 ; The bootstrapper bundles exact, checksum-pinned upstream payloads prepared by scripts/build.ps1.
 #ifndef AppVersion
-  #define AppVersion "1.1.0"
+  #define AppVersion "1.2.0"
 #endif
 
 #define AppName "Noise Cancelling Stack"
 #define AppPublisher "JBWortley"
 #define ManagerExe "NoiseCancellingStack.Manager.exe"
+; Must match MaintenanceTask.WatcherTaskName in the manager.
+#define WatcherTaskName "Noise Cancelling Stack\Keep microphones filtered"
 
 [Setup]
 AppId={{7865CDB5-5F43-487D-8F4F-59FF62720A66}
@@ -42,6 +44,9 @@ ChangesAssociations=no
 Source: "..\artifacts\publish\{#ManagerExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\artifacts\payload\rnnoise_mono.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion
 Source: "..\artifacts\payload\webrtc_apm_16k.dll"; DestDir: "{app}\plugins"; Flags: ignoreversion
+; The echo canceller is a COM APO: setup registers it (DllRegisterServer) and uninstall unregisters it
+; after the manager has restored every endpoint. The manager attaches it only on Windows 11.
+Source: "..\artifacts\payload\ncs_aec_apo.dll"; DestDir: "{app}\apo"; Flags: ignoreversion regserver
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSING.md"; DestDir: "{app}"; Flags: ignoreversion
@@ -65,10 +70,76 @@ Name: "{group}\Microphone status"; Filename: "{app}\{#ManagerExe}"; Parameters: 
 Name: "{group}\Logs and backups"; Filename: "{commonappdata}\NoiseCancellingStack"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 
+[UninstallDelete]
+Type: files; Name: "{app}\*.replaced-*"
+Type: files; Name: "{app}\apo\*.replaced-*"
+Type: files; Name: "{app}\plugins\*.replaced-*"
+
 [Code]
 const
   RequiredApoVersion = '1.4.2';
   ApoInstallerName = 'EqualizerAPO-x64-1.4.2.exe';
+
+var
+  { Payloads moved aside this run and where they went, for cleanup or restore. }
+  MovedPayloads: TArrayOfString;
+  MovedAside: TArrayOfString;
+
+{ The audio engine (audiodg) keeps every loaded payload DLL mapped, and a mapped file cannot be
+  overwritten, but it can be renamed. Each existing payload is therefore moved aside just before
+  files are copied; audiodg keeps running on the old image until the manager restarts Windows
+  Audio, so an upgrade never fails on a file in use and adds no extra interruption. }
+procedure MovePayloadAside(const Path: String);
+var
+  Aside: String;
+  Count: Integer;
+begin
+  if not FileExists(Path) then
+    exit;
+  Aside := Path + '.replaced-' + GetDateTimeString('yyyymmddhhnnss', #0, #0);
+  if RenameFile(Path, Aside) then
+  begin
+    Count := GetArrayLength(MovedPayloads);
+    SetArrayLength(MovedPayloads, Count + 1);
+    SetArrayLength(MovedAside, Count + 1);
+    MovedPayloads[Count] := Path;
+    MovedAside[Count] := Aside;
+    Log('Moved existing payload aside: ' + Aside);
+  end;
+end;
+
+{ Deletes copies left by earlier upgrades; one still loaded stays until a later run. }
+procedure DeleteReplacedPayloads(const Directory: String);
+var
+  FindRec: TFindRec;
+begin
+  if FindFirst(Directory + '\*.replaced-*', FindRec) then
+  begin
+    try
+      repeat
+        DeleteFile(Directory + '\' + FindRec.Name);
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+end;
+
+procedure DeinitializeSetup();
+var
+  Index: Integer;
+begin
+  { If setup stopped before a replacement was copied, put the original back so no microphone is
+    left pointing at a missing echo canceller or plug-in. }
+  for Index := 0 to GetArrayLength(MovedPayloads) - 1 do
+  begin
+    if (not FileExists(MovedPayloads[Index])) and FileExists(MovedAside[Index]) then
+    begin
+      if RenameFile(MovedAside[Index], MovedPayloads[Index]) then
+        Log('Restored payload after incomplete setup: ' + MovedPayloads[Index]);
+    end;
+  end;
+end;
 
 function InstalledApoVersion(): String;
 begin
@@ -127,7 +198,23 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
+  Index: Integer;
 begin
+  if CurStep = ssInstall then
+  begin
+    { The watcher runs the installed manager for the whole session; end it so the executable can
+      be replaced (the manager's install step starts the new one). Absent on a first install. }
+    Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN "{#WatcherTaskName}"', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode);
+    DeleteReplacedPayloads(ExpandConstant('{app}'));
+    DeleteReplacedPayloads(ExpandConstant('{app}\apo'));
+    DeleteReplacedPayloads(ExpandConstant('{app}\plugins'));
+    MovePayloadAside(ExpandConstant('{app}\{#ManagerExe}'));
+    MovePayloadAside(ExpandConstant('{app}\apo\ncs_aec_apo.dll'));
+    MovePayloadAside(ExpandConstant('{app}\plugins\rnnoise_mono.dll'));
+    MovePayloadAside(ExpandConstant('{app}\plugins\webrtc_apm_16k.dll'));
+  end;
+
   if CurStep = ssPostInstall then
   begin
     WizardForm.StatusLabel.Caption := 'Registering capture endpoints and installing noise suppression...';
@@ -159,6 +246,13 @@ begin
         mbInformation,
         MB_OK);
     end;
+
+    { The replacements are in place and the manager has restarted Windows Audio, so the old
+      copies are normally unloaded now; any still loaded are removed by a later run. }
+    for Index := 0 to GetArrayLength(MovedAside) - 1 do
+      DeleteFile(MovedAside[Index]);
+    SetArrayLength(MovedPayloads, 0);
+    SetArrayLength(MovedAside, 0);
   end;
 end;
 

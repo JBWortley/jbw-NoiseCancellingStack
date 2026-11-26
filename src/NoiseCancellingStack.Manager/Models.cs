@@ -31,10 +31,22 @@ public sealed class EndpointState
     public bool Pending { get; set; } = true;
     public bool FxKeyExisted { get; set; }
     public bool ChildKeyExisted { get; set; }
+    /// <summary>
+    /// True for a microphone whose Equalizer APO attachment predates this product: only the echo
+    /// canceller's MFX value and MFX mode list are journaled and owned; Equalizer APO is left alone.
+    /// Absent in journals written before 1.2.0, which therefore read as false.
+    /// </summary>
+    public bool EchoCancellerOnly { get; set; }
     public Dictionary<string, RegistryValueSnapshot> OriginalFx { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, RegistryValueSnapshot> InstalledFx { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, RegistryValueSnapshot> OriginalChild { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, RegistryValueSnapshot> InstalledChild { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Endpoint Properties values owned while the microphone is filtered (the FILTERED name and
+    /// disabled raw capture), as original/installed pairs. Empty in journals written before 1.2.0.
+    /// </summary>
+    public Dictionary<string, RegistryValueSnapshot> OriginalProperties { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, RegistryValueSnapshot> InstalledProperties { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed class RegistryValueSnapshot
@@ -131,11 +143,27 @@ public sealed class RegistryValueSnapshot
     }
 }
 
-public sealed record EndpointSummary(string EndpointId, string DisplayName, uint SampleRate, bool EqualizerApoAttached);
+public sealed record EndpointSummary(
+    string EndpointId,
+    string DisplayName,
+    uint SampleRate,
+    bool EqualizerApoAttached,
+    bool EchoCancellerAttached);
+
+/// <summary>Machine facts that decide whether any endpoint can receive the echo canceller.</summary>
+public sealed record EchoCancellerContext(int WindowsBuild, bool Registered);
+
+public sealed record EchoCancellerDecision(bool ShouldAttach, string Reason)
+{
+    public static EchoCancellerDecision Attach { get; } = new(true, "eligible");
+    public static EchoCancellerDecision Skip(string reason) => new(false, reason);
+}
 
 public sealed class OperationReport
 {
     public int Attached { get; set; }
+    public int EchoCancellersAttached { get; set; }
+    public int EchoCancellersRemoved { get; set; }
     public int AlreadyAttached { get; set; }
     public int Restored { get; set; }
     public int Skipped { get; set; }

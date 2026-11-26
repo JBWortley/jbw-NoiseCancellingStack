@@ -11,10 +11,24 @@ public interface INativePluginProbe
 public sealed class PayloadValidator
 {
     private readonly INativePluginProbe nativePluginProbe;
+    private readonly INativePluginProbe? echoCancellerProbe;
 
-    public PayloadValidator(INativePluginProbe nativePluginProbe)
+    public PayloadValidator(INativePluginProbe nativePluginProbe, INativePluginProbe? echoCancellerProbe = null)
     {
         this.nativePluginProbe = nativePluginProbe ?? throw new ArgumentNullException(nameof(nativePluginProbe));
+        this.echoCancellerProbe = echoCancellerProbe;
+    }
+
+    // The echo canceller is validated on every Windows version, even where it is never attached:
+    // a corrupt or substituted payload is a release-integrity failure, not a platform limitation.
+    public void ValidateEchoCanceller(string echoCancellerPath, string expectedSha256)
+    {
+        if (echoCancellerProbe is null)
+        {
+            throw new InvalidOperationException("No echo canceller self-test probe was configured.");
+        }
+        var fullPath = ValidateFile("echo cancellation APO", echoCancellerPath, expectedSha256);
+        echoCancellerProbe.Verify(fullPath);
     }
 
     public void Validate(

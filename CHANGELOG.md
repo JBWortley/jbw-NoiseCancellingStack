@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0 (unreleased)
+
+- Added Windows 11 acoustic echo cancellation: a project-built capture mode effect (MFX) runs WebRTC AEC3 against the speaker reference that Windows supplies, before Equalizer APO's noise suppression.
+- The echo canceller is attached automatically only on Windows 11 (build 22000+), only to modern endpoints whose MFX slot, MFX mode list, and composite MFX list are unused, and never to headset, handset, or combined hands-free microphones. Existing driver effects are never displaced.
+- It is registered for the default processing mode only, matching Equalizer APO, so it never makes a new processing mode (such as Communications) available.
+- Echo cancellation adds a fixed latency of about 9 ms at 48 kHz (8 ms at 16 kHz), reported to Windows. On failure it switches to delayed dry audio so the latency never changes mid-stream.
+- WebRTC's ~80 Hz high-pass filter applies while echo cancellation is attached, and 48 kHz streams are attenuated above about 19 kHz.
+- `DisableEchoCancellation` (HKLM\SOFTWARE\NoiseCancellingStack, DWORD 1) turns it into unchanged pass-through without uninstalling.
+- Upgrades add echo cancellation to already-managed microphones through a write-ahead journal entry; older journals remain valid.
+- Microphones where Equalizer APO was attached before the stack was installed also receive the echo canceller when Equalizer APO occupies only their SFX slot. They are journaled as echo-canceller-only records that own just the MFX value and MFX mode list, so uninstall never touches their Equalizer APO setup.
+- Filtered microphones are renamed `… FILTERED` and no longer advertise raw capture, so Chromium-based call apps (Teams, Discord, browsers, Electron apps such as WD Studio), which request raw streams that skip all system effects, receive the filtered signal. A new SYSTEM watcher task keeps raw capture disabled when Windows rebuilds a microphone after a replug or boot. Both values are journaled and restored on uninstall.
+- Setup moves loaded payload DLLs aside before copying their replacements, so upgrading while microphones are in use no longer depends on Windows Audio releasing the files; the old copies are deleted once unloaded.
+- Repair validates the echo canceller's SHA-256 digest and synthetic self-test before any mutation, on every Windows version.
+- Applications keep their own echo cancellation; the stack does not advertise its effect to them. If speech is clipped during double talk, disable one layer.
+
 ## 1.1.0 (unreleased)
 
 - Added a hardware-vendor-agnostic WebRTC APM noise-suppression path for exactly 16 kHz capture streams, including Logitech C920 and Bluetooth hands-free use cases.

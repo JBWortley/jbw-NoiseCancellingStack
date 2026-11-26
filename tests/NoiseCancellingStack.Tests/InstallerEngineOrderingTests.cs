@@ -26,6 +26,22 @@ public sealed class InstallerEngineOrderingTests
     }
 
     [Fact]
+    public void ShouldRestartAudio_WhenOnlyAnEchoCancellerWasAttached()
+    {
+        // Upgrading an already-managed microphone attaches only the echo canceller; Windows Audio
+        // must restart so the engine builds the new capture graph.
+        var report = new OperationReport { EchoCancellersAttached = 1 };
+        Assert.True(InstallerEngine.ShouldRestartAudio(forceAudioRestart: false, report));
+    }
+
+    [Fact]
+    public void ShouldRestartAudio_WhenAnUnregisteredEchoCancellerWasDetached()
+    {
+        var report = new OperationReport { EchoCancellersRemoved = 1 };
+        Assert.True(InstallerEngine.ShouldRestartAudio(forceAudioRestart: false, report));
+    }
+
+    [Fact]
     public void Program_ForcesRestartOnlyForExplicitInstall()
     {
         var sourcePath = Path.Combine(
@@ -63,8 +79,11 @@ public sealed class InstallerEngineOrderingTests
             StringComparison.Ordinal);
         Assert.True(methodStart >= 0 && methodEnd > methodStart);
         var method = source[methodStart..methodEnd];
-        var validation = method.IndexOf("PayloadValidator", StringComparison.Ordinal);
-        Assert.True(validation >= 0, "InstallOrRepair must invoke PayloadValidator.");
+        Assert.True(method.IndexOf("PayloadValidator", StringComparison.Ordinal) >= 0, "InstallOrRepair must invoke PayloadValidator.");
+        Assert.True(method.IndexOf("ValidateEchoCanceller", StringComparison.Ordinal) >= 0, "InstallOrRepair must validate the echo canceller.");
+        var validation = Math.Max(
+            method.IndexOf("PayloadValidator", StringComparison.Ordinal),
+            method.IndexOf("ValidateEchoCanceller", StringComparison.Ordinal));
 
         foreach (var mutation in new[]
         {

@@ -12,9 +12,9 @@
     <Description>Offline system-wide microphone noise suppression manager for Windows.</Description>
     <RepositoryUrl>https://github.com/JBWortley/jbw-NoiseCancellingStack</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
-    <Version>1.1.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
+    <Version>1.2.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
@@ -22,6 +22,7 @@
     <TrimMode>partial</TrimMode>
     <InvariantGlobalization>true</InvariantGlobalization>
     <WebRtcApmPluginSha256 Condition="'$(WebRtcApmPluginSha256)' == ''">DEVELOPMENT-BUILD-NO-WEBRTC-PAYLOAD-HASH</WebRtcApmPluginSha256>
+    <EchoCancellerApoSha256 Condition="'$(EchoCancellerApoSha256)' == ''">DEVELOPMENT-BUILD-NO-AEC-PAYLOAD-HASH</EchoCancellerApoSha256>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
@@ -36,6 +37,7 @@
       <_GeneratedPayloadHashLine Include="internal static class GeneratedPayloadHashes" />
       <_GeneratedPayloadHashLine Include="{" />
       <_GeneratedPayloadHashLine Include="    internal const string WebRtcApmPluginSha256 = &quot;$(WebRtcApmPluginSha256)&quot;%3B" />
+      <_GeneratedPayloadHashLine Include="    internal const string EchoCancellerApoSha256 = &quot;$(EchoCancellerApoSha256)&quot;%3B" />
       <_GeneratedPayloadHashLine Include="}" />
     </ItemGroup>
     <WriteLinesToFile

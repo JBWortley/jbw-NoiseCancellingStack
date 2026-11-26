@@ -48,10 +48,42 @@ public sealed class MaintenanceTaskTests
         Assert.Equal(managerPath, Value(document, "Command"));
     }
 
-    private static string BuildTaskXml(string managerPath)
+    [Fact]
+    public void BuildWatcherTaskXml_RunsForTheWholeSessionAndRestartsOnFailure()
+    {
+        var document = XDocument.Parse(BuildTaskXml(@"C:\Program Files\NoiseCancellingStack\manager.exe", "BuildWatcherTaskXml"));
+
+        Assert.Equal("S-1-5-18", Value(document, "UserId"));
+        Assert.Empty(document.Descendants(TaskNamespace + "Delay"));   // starts at boot, before applications
+        Assert.Equal("PT0S", Value(document, "ExecutionTimeLimit"));    // no execution limit
+        Assert.Equal("PT1M", Value(document, "Interval"));
+        Assert.Equal("false", Value(document, "DisallowStartIfOnBatteries"));
+        Assert.Equal("false", Value(document, "StopIfGoingOnBatteries"));
+        Assert.Equal("false", Value(document, "StopOnIdleEnd"));
+        Assert.Equal("IgnoreNew", Value(document, "MultipleInstancesPolicy"));
+        Assert.Equal("true", Value(document, "Hidden"));
+        Assert.Equal("watch --quiet", Value(document, "Arguments"));
+    }
+
+    [Fact]
+    public void WatcherTaskName_MatchesTheInstallerThatEndsItBeforeReplacingFiles()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "NoiseCancellingStack.slnx")))
+        {
+            root = root.Parent;
+        }
+        var installer = File.ReadAllText(Path.Combine(root!.FullName, "installer", "NoiseCancellingStack.iss"));
+        Assert.Contains($"#define WatcherTaskName \"{MaintenanceTask.WatcherTaskName}\"", installer, StringComparison.Ordinal);
+        var end = installer.IndexOf("'/End /TN \"{#WatcherTaskName}\"'", StringComparison.Ordinal);
+        var moveManager = installer.IndexOf("MovePayloadAside(ExpandConstant('{app}\\{#ManagerExe}'))", StringComparison.Ordinal);
+        Assert.True(end >= 0 && moveManager > end, "Setup must end the watcher before replacing the manager.");
+    }
+
+    private static string BuildTaskXml(string managerPath, string builder = "BuildTaskXml")
     {
         var method = typeof(MaintenanceTask).GetMethod(
-            "BuildTaskXml",
+            builder,
             BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("MaintenanceTask.BuildTaskXml was not found.");
         return (string)(method.Invoke(null, [managerPath])

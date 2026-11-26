@@ -80,6 +80,26 @@ public sealed class MaintenanceTaskTests
         Assert.True(end >= 0 && moveManager > end, "Setup must end the watcher before replacing the manager.");
     }
 
+    [Fact]
+    public void Installer_ShipsTheTrayIconForTheSignedInUserAndStopsItBeforeReplacingFiles()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "NoiseCancellingStack.slnx")))
+        {
+            root = root.Parent;
+        }
+        var installer = File.ReadAllText(Path.Combine(root!.FullName, "installer", "NoiseCancellingStack.iss"));
+        Assert.Contains($"#define TrayExe \"{ProductConstants.TrayExecutableName}\"", installer, StringComparison.Ordinal);
+        Assert.Contains(@"Source: ""..\artifacts\payload\{#TrayExe}""; DestDir: ""{app}""", installer, StringComparison.Ordinal);
+        // Never started elevated: it runs as the user who ran setup.
+        Assert.Contains(@"Filename: ""{app}\{#TrayExe}""; Parameters: ""--install""; Flags: nowait runasoriginaluser", installer, StringComparison.Ordinal);
+        var kill = installer.IndexOf("'/F /IM {#TrayExe}'", StringComparison.Ordinal);
+        var moveTray = installer.IndexOf("MovePayloadAside(ExpandConstant('{app}\\{#TrayExe}'))", StringComparison.Ordinal);
+        Assert.True(kill >= 0 && moveTray > kill, "Setup must close running tray icons before replacing the executable.");
+        Assert.Contains(@"Parameters: ""/F /IM {#TrayExe}""; Flags: runhidden; RunOnceId: ""StopTrayIcon""", installer, StringComparison.Ordinal);
+        Assert.Contains(@"ValueName: ""{#AppName}""; Flags: uninsdeletevalue dontcreatekey", installer, StringComparison.Ordinal);
+    }
+
     private static string BuildTaskXml(string managerPath, string builder = "BuildTaskXml")
     {
         var method = typeof(MaintenanceTask).GetMethod(

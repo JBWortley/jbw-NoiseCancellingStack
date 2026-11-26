@@ -19,7 +19,8 @@ public static partial class ConfigManager
         string rnNoisePluginPath,
         string webRtcPluginPath,
         string backupDirectory,
-        IOperationLogger logger)
+        IOperationLogger logger,
+        bool filteringEnabled = true)
     {
         ValidatePath(rnNoisePluginPath);
         ValidatePath(webRtcPluginPath);
@@ -32,7 +33,9 @@ public static partial class ConfigManager
         var updatedBase = IsKnownLegacyOnlyConfig(original) ? string.Empty : StripManagedBlock(original);
         var includeBlock = $"{BeginMarker}{Environment.NewLine}Include: {ManagedFileName}{Environment.NewLine}{EndMarker}";
         var updated = AppendBlock(updatedBase, includeBlock);
-        var managed = BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath);
+        var managed = filteringEnabled
+            ? BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath)
+            : BuildDisabledManagedConfig();
 
         if (File.Exists(mainPath))
         {
@@ -65,12 +68,47 @@ public static partial class ConfigManager
             return false;
         }
 
-        return HasManagedInclude(mainPath)
-            && string.Equals(
-                File.ReadAllText(managedPath),
-                BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath),
-                StringComparison.Ordinal);
+        return HasManagedInclude(mainPath) && IsOwnedManagedFile(File.ReadAllText(managedPath), rnNoisePluginPath, webRtcPluginPath);
     }
+
+    // The managed file is ours when it holds either the filtering or the turned-off variant.
+    private static bool IsOwnedManagedFile(string actual, string rnNoisePluginPath, string webRtcPluginPath) =>
+        string.Equals(actual, BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath), StringComparison.Ordinal)
+        || string.Equals(actual, BuildDisabledManagedConfig(), StringComparison.Ordinal);
+
+    /// <summary>
+    /// Switches noise suppression on or off by rewriting only the managed include file, which
+    /// Equalizer APO reloads live. Refuses (returns false) if that file was modified by hand.
+    /// </summary>
+    public static bool SetFiltering(
+        string configDirectory,
+        string rnNoisePluginPath,
+        string webRtcPluginPath,
+        bool enabled,
+        IOperationLogger logger)
+    {
+        if (!IsManagedInstallation(configDirectory, rnNoisePluginPath, webRtcPluginPath))
+        {
+            logger.Write("Left noise suppression unchanged: the managed Equalizer APO configuration is missing or was modified.");
+            return false;
+        }
+        var managedPath = Path.Combine(configDirectory, ManagedFileName);
+        var desired = enabled ? BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath) : BuildDisabledManagedConfig();
+        if (string.Equals(File.ReadAllText(managedPath), desired, StringComparison.Ordinal))
+        {
+            return false;
+        }
+        AtomicWrite(managedPath, desired);
+        logger.Write(enabled ? "Turned noise suppression on." : "Turned noise suppression off (audio passes through).");
+        return true;
+    }
+
+    public static string BuildDisabledManagedConfig() => string.Join(Environment.NewLine,
+    [
+        "# Managed by Noise Cancelling Stack. Changes may be replaced during repair.",
+        "# Filtering is turned off from the tray icon: every stream passes through unchanged.",
+        string.Empty
+    ]);
 
     public static bool IsTrustedManagedInstallation(
         string configDirectory,
@@ -87,7 +125,7 @@ public static partial class ConfigManager
         }
 
         var actual = File.ReadAllText(managedPath);
-        return string.Equals(actual, BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath), StringComparison.Ordinal)
+        return IsOwnedManagedFile(actual, rnNoisePluginPath, webRtcPluginPath)
             || string.Equals(actual, BuildVersion101ManagedConfig(rnNoisePluginPath), StringComparison.Ordinal);
     }
 
@@ -115,9 +153,8 @@ public static partial class ConfigManager
 
         if (File.Exists(managedPath))
         {
-            var expected = BuildManagedConfig(rnNoisePluginPath, webRtcPluginPath);
             var actual = File.ReadAllText(managedPath);
-            if (string.Equals(actual, expected, StringComparison.Ordinal))
+            if (IsOwnedManagedFile(actual, rnNoisePluginPath, webRtcPluginPath))
             {
                 File.Delete(managedPath);
                 changed = true;

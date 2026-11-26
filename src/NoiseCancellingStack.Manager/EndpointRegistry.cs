@@ -138,6 +138,12 @@ public sealed class EndpointRegistry
     // values; neither needs an audio restart, and neither ever displaces a value someone else set.
     private void ReconcileFilteredProperties(RegistryKey hklm, InstallState state, OperationReport report)
     {
+        if (!FilteringControl.ReadApplied(hklm))
+        {
+            // Filtering is off from the tray: names and raw capture stay Windows' own until it is
+            // turned back on, when the watcher restores ours and the next repair labels new microphones.
+            return;
+        }
         foreach (var endpoint in state.Endpoints.ToArray())
         {
             if (endpoint.Pending || !StateStillInstalled(hklm, endpoint))

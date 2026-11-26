@@ -107,6 +107,23 @@ public static class FilteredEndpointPolicy
     }
 
     /// <summary>
+    /// For the tray switch: the value to write so a tracked value is ours (on) or Windows' own (off),
+    /// or null to leave it, including whenever someone else has changed it.
+    /// </summary>
+    public static RegistryValueSnapshot? ToggleTarget(
+        bool enabled,
+        RegistryValueSnapshot original,
+        RegistryValueSnapshot installed,
+        RegistryValueSnapshot current)
+    {
+        if (enabled)
+        {
+            return current.EquivalentTo(original) && !current.EquivalentTo(installed) ? installed : null;
+        }
+        return current.EquivalentTo(installed) && !current.EquivalentTo(original) ? original : null;
+    }
+
+    /// <summary>
     /// The background watcher's only job: endpoints whose tracked raw-capture value Windows has
     /// reset to the driver's original since it was disabled. Pending records are skipped.
     /// </summary>

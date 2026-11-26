@@ -226,12 +226,15 @@ if ($needsWebRtc) {
     if (-not (Test-Path -LiteralPath $plugin)) { throw 'WebRTC VST2 payload was not produced.' }
     $echoCanceller = Join-Path $buildDirectory 'ncs_aec_apo.dll'
     if (-not (Test-Path -LiteralPath $echoCanceller)) { throw 'Echo cancellation APO payload was not produced.' }
+    $tray = Join-Path $buildDirectory 'ncs_tray.exe'
+    if (-not (Test-Path -LiteralPath $tray)) { throw 'Tray icon executable was not produced.' }
     $payloadDirectory = Join-Path $root 'artifacts\payload'
     $nativeManifestDirectory = Join-Path $root 'artifacts\native'
     New-Item -ItemType Directory -Path $payloadDirectory -Force | Out-Null
     New-Item -ItemType Directory -Path $nativeManifestDirectory -Force | Out-Null
     Copy-Item -LiteralPath $plugin -Destination (Join-Path $payloadDirectory 'webrtc_apm_16k.dll') -Force
     Copy-Item -LiteralPath $echoCanceller -Destination (Join-Path $payloadDirectory 'ncs_aec_apo.dll') -Force
+    Copy-Item -LiteralPath $tray -Destination (Join-Path $payloadDirectory 'NoiseCancellingStack.Tray.exe') -Force
 
     $pluginHash = (Get-FileHash -LiteralPath $plugin -Algorithm SHA256).Hash
     $echoCancellerHash = (Get-FileHash -LiteralPath $echoCanceller -Algorithm SHA256).Hash
@@ -246,7 +249,7 @@ if ($needsWebRtc) {
     $props | Set-Content -LiteralPath (Join-Path $nativeManifestDirectory 'webrtc-apm.props') -Encoding UTF8
 
     if ([string]::IsNullOrWhiteSpace($TestFilter)) {
-        foreach ($payload in @($plugin, $echoCanceller)) {
+        foreach ($payload in @($plugin, $echoCanceller, $tray)) {
             $dependencies = & dumpbin.exe /dependents $payload
             if ($LASTEXITCODE -ne 0) { throw "Could not inspect dependencies of $payload." }
             $dependencies | Write-Output

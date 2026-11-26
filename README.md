@@ -94,9 +94,19 @@ reg add HKLM\SOFTWARE\NoiseCancellingStack /v DisableEchoCancellation /t REG_DWO
 
 Delete that value (or set it to `0`) to turn it back on.
 
+## Tray icon
+
+A microphone icon in the notification area gives each user three controls:
+
+- **Filter microphones**: turns noise suppression and echo cancellation on or off for every microphone. Off means stock Windows behaviour: audio passes through unprocessed, the ` FILTERED` names come off, and raw capture is advertised again. Windows Audio restarts once (a short dropout) so the echo canceller picks up the change. The choice applies to the whole PC and survives reboots, with or without the icon running.
+- **Start with Windows**: starts the icon when you sign in (on by default).
+- **Close**: removes the icon. Filtering keeps its current state; reopen the icon from the Start menu (**Noise Cancelling Stack tray icon**).
+
+The icon is green while filtering is on, grey while it is off, amber while a change is being applied, and red if the stack is not installed. It runs unelevated: it only writes a single on/off value that setup lets standard users change, and the SYSTEM watcher applies it.
+
 ## Is it always running?
 
-There is no persistent filtering application. Windows loads the configured APO and the matching processor when an attached microphone's shared-mode capture graph becomes active, then unloads it when no longer needed.
+There is no persistent filtering application. Windows loads the configured APO and the matching processor when an attached microphone's shared-mode capture graph becomes active, then unloads it when no longer needed. The tray icon and the watcher are small helpers (about 1 MB and 17 MB of memory) that use no CPU while idle.
 
 A hidden SYSTEM task runs an idempotent repair scan one minute after startup, including on battery. It uses `StartWhenAvailable`, permits only one instance, and has a bounded execution time. The scan repairs the managed configuration, discovers newly registered microphones, and restarts Windows Audio only when an attachment or configuration actually changed.
 

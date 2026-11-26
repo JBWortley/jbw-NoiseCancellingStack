@@ -17,6 +17,7 @@ MIT permits use, modification, distribution, sublicensing, and commercial use. I
 | Noise Suppression for Voice 1.10 | Unmodified bundled VST2 DLL loaded by Equalizer APO | GPL-3.0-only | `noise-suppression-for-voice-v1.10.zip` |
 | Noise Cancelling Stack WebRTC VST2 | Project-authored plug-in using the FST ABI headers | GPL-3.0-only | `NoiseCancellingStack-source-<version>.zip` |
 | Noise Cancelling Stack echo cancellation APO | Project-authored Windows APO; uses no FST headers | MIT | `NoiseCancellingStack-source-<version>.zip` |
+| Noise Cancelling Stack tray icon | Project-authored Win32 executable; links only Windows system libraries | MIT | `NoiseCancellingStack-source-<version>.zip` |
 | WebRTC Audio Processing `m155.8059.4.0` | Statically linked noise-suppression and echo-cancellation implementation | BSD-3-Clause with patent grant and bundled compatible notices | `webrtc-audio-processing-3a6b666a906da6cb3c6f9d474fab21c2ba739f22.zip` |
 | Abseil 20250814.1 | Statically linked WebRTC dependency | Apache-2.0 | `abseil-cpp-20250814.1.tar.gz` plus the pinned Meson wrap patch |
 | FST 0.120.0 headers | VST2 ABI used by the project-authored plug-in | GPL-3.0-only | Included in the Noise Suppression for Voice source archive |

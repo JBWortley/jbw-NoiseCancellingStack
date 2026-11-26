@@ -46,6 +46,7 @@ constexpr CLSID kEchoCancellerClsid = {
 constexpr wchar_t kEchoCancellerClsidString[] = L"{6F0DE50F-5FE3-47EA-BA01-D9AAB0788EF7}";
 constexpr wchar_t kSettingsKey[] = L"SOFTWARE\\NoiseCancellingStack";
 constexpr wchar_t kDisableValue[] = L"DisableEchoCancellation";
+constexpr wchar_t kAppliedFilteringValue[] = L"AppliedFilteringEnabled";
 constexpr int kPreferredReferenceRate = 48'000;
 constexpr std::size_t kRingSeconds = 1;                // reference ring capacity
 constexpr std::size_t kMaxReferenceBacklogBlocks = 25;  // 250 ms; older reference is dropped
@@ -56,13 +57,23 @@ std::atomic<long> g_locks{0};
 
 void Trace(const wchar_t* message) noexcept { OutputDebugStringW(message); }
 
+// Read once per instance, outside the real-time path. Either the administrator kill switch or the
+// tray icon's "filtering off" (applied by the SYSTEM watcher, which then restarts Windows Audio so
+// every instance is rebuilt) makes the instance pass audio through.
 bool IsDisabledByPolicy() noexcept {
   DWORD value = 0;
   DWORD size = sizeof(value);
-  return RegGetValueW(HKEY_LOCAL_MACHINE, kSettingsKey, kDisableValue, RRF_RT_REG_DWORD, nullptr,
+  if (RegGetValueW(HKEY_LOCAL_MACHINE, kSettingsKey, kDisableValue, RRF_RT_REG_DWORD, nullptr, &value, &size)
+          == ERROR_SUCCESS
+      && value != 0) {
+    return true;
+  }
+  value = 1;
+  size = sizeof(value);
+  return RegGetValueW(HKEY_LOCAL_MACHINE, kSettingsKey, kAppliedFilteringValue, RRF_RT_REG_DWORD, nullptr,
                       &value, &size)
              == ERROR_SUCCESS
-      && value != 0;
+      && value == 0;
 }
 
 struct Format {

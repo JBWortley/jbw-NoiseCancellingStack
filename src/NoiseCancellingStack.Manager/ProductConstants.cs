@@ -71,6 +71,14 @@ public static class ProductConstants
     // renameable device description, ConnectionName) and RawProcessingSupported.
     public static readonly string[] ManagedPropertyNames = [ConnectionName, RawProcessingSupported];
     public const string FilteredLabelSuffix = " FILTERED";
+
+    // Tray control channel. Standard users may write FilteringEnabled under UserControl (the tray
+    // icon does); the SYSTEM watcher applies it and records the result in AppliedFilteringEnabled
+    // under SettingsRoot, which only administrators can write and which the echo canceller reads.
+    public const string UserControlKey = SettingsRoot + @"\UserControl";
+    public const string FilteringEnabledValue = "FilteringEnabled";
+    public const string AppliedFilteringEnabledValue = "AppliedFilteringEnabled";
+    public const string TrayExecutableName = "NoiseCancellingStack.Tray.exe";
     public static readonly string[] ManagedChildNames =
     [
         Lfx, Gfx, Sfx, Mfx, Efx, PreMixChild, PostMixChild,

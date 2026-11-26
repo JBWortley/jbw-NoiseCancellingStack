@@ -41,6 +41,13 @@ public sealed class InstallerEngine
                 "Refusing to apply pre-staged registry data; consult the recovery backups.");
         }
         SafetyBackup.Create("install-repair", configDirectory, logger);
+        FilteringControl.EnsureUserControlKey(logger);
+        bool filteringEnabled;
+        using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, ProductConstants.RegistryView))
+        {
+            // Repair keeps whatever the tray icon last applied; the watcher applies any newer choice.
+            filteringEnabled = FilteringControl.ReadApplied(hklm);
+        }
 
         var report = new OperationReport
         {
@@ -49,7 +56,8 @@ public sealed class InstallerEngine
                 ProductConstants.MonoPluginPath,
                 ProductConstants.WebRtcPluginPath,
                 ProductConstants.BackupDirectory,
-                logger)
+                logger,
+                filteringEnabled)
         };
         state.ConfigInstalled = true;
         state.EqualizerApoConfigPath = configDirectory;
@@ -122,6 +130,7 @@ public sealed class InstallerEngine
         }
         state.ConfigInstalled = false;
         stateStore.Save(state);
+        FilteringControl.Remove(logger);
 
         try
         {
@@ -176,7 +185,7 @@ public sealed class InstallerEngine
         TryGetEqualizerApoConfigDirectory()
         ?? throw new InvalidOperationException("Equalizer APO ConfigPath is missing from the registry.");
 
-    private static string? TryGetEqualizerApoConfigDirectory()
+    internal static string? TryGetEqualizerApoConfigDirectory()
     {
         using var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, ProductConstants.RegistryView);
         using var product = hklm.OpenSubKey(ProductConstants.EqualizerApoRoot, writable: false);

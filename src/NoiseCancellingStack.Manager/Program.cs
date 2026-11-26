@@ -96,6 +96,13 @@ public static class Program
         logger.Write(
             $"Echo cancellation on {endpoints.Count(item => item.EchoCancellerAttached)} endpoint(s)" +
             (IsEchoCancellationDisabledByPolicy() ? " (disabled by policy: audio passes through unchanged)." : "."));
+        using (var hklm = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, ProductConstants.RegistryView))
+        {
+            var applied = FilteringControl.ReadApplied(hklm);
+            var desired = FilteringControl.ReadDesired(hklm);
+            logger.Write($"Filtering (tray icon): {(applied ? "on" : "off")}" +
+                (applied == desired ? "." : $"; turning {(desired ? "on" : "off")} once the watcher applies it."));
+        }
         return ExitSuccess;
     }
 

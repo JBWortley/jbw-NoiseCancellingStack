@@ -9,6 +9,7 @@
 #define ManagerExe "NoiseCancellingStack.Manager.exe"
 ; Must match MaintenanceTask.WatcherTaskName in the manager.
 #define WatcherTaskName "Noise Cancelling Stack\Keep microphones filtered"
+#define TrayExe "NoiseCancellingStack.Tray.exe"
 
 [Setup]
 AppId={{7865CDB5-5F43-487D-8F4F-59FF62720A66}
@@ -47,6 +48,8 @@ Source: "..\artifacts\payload\webrtc_apm_16k.dll"; DestDir: "{app}\plugins"; Fla
 ; The echo canceller is a COM APO: setup registers it (DllRegisterServer) and uninstall unregisters it
 ; after the manager has restored every endpoint. The manager attaches it only on Windows 11.
 Source: "..\artifacts\payload\ncs_aec_apo.dll"; DestDir: "{app}\apo"; Flags: ignoreversion regserver
+; Tray icon: runs unelevated per user; it only writes the filtering switch the SYSTEM watcher applies.
+Source: "..\artifacts\payload\{#TrayExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSING.md"; DestDir: "{app}"; Flags: ignoreversion
@@ -65,10 +68,23 @@ Source: "..\artifacts\licenses\Abseil-LICENSE.txt"; DestDir: "{app}\licenses"; F
 Source: "..\vendor\cache\EqualizerAPO-x64-1.4.2.exe"; Flags: dontcopy
 
 [Icons]
+Name: "{group}\Noise Cancelling Stack tray icon"; Filename: "{app}\{#TrayExe}"; WorkingDir: "{app}"
 Name: "{group}\Repair all microphones"; Filename: "{app}\{#ManagerExe}"; Parameters: "repair"; WorkingDir: "{app}"
 Name: "{group}\Microphone status"; Filename: "{app}\{#ManagerExe}"; Parameters: "status"; WorkingDir: "{app}"
 Name: "{group}\Logs and backups"; Filename: "{commonappdata}\NoiseCancellingStack"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
+
+[Registry]
+; Created by the tray icon itself ("Start with Windows"); removed for the installing user on uninstall.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "{#AppName}"; Flags: uninsdeletevalue dontcreatekey
+
+[Run]
+; Starts the icon for the signed-in user (not an elevated administrator account) and turns on
+; "Start with Windows" unless that user turned it off before.
+Filename: "{app}\{#TrayExe}"; Parameters: "--install"; Flags: nowait runasoriginaluser
+
+[UninstallRun]
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM {#TrayExe}"; Flags: runhidden; RunOnceId: "StopTrayIcon"
 
 [UninstallDelete]
 Type: files; Name: "{app}\*.replaced-*"
@@ -206,10 +222,13 @@ begin
       be replaced (the manager's install step starts the new one). Absent on a first install. }
     Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN "{#WatcherTaskName}"', '', SW_HIDE,
       ewWaitUntilTerminated, ResultCode);
+    { Close running tray icons (every session) so the new one starts; [Run] launches it again. }
+    Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM {#TrayExe}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     DeleteReplacedPayloads(ExpandConstant('{app}'));
     DeleteReplacedPayloads(ExpandConstant('{app}\apo'));
     DeleteReplacedPayloads(ExpandConstant('{app}\plugins'));
     MovePayloadAside(ExpandConstant('{app}\{#ManagerExe}'));
+    MovePayloadAside(ExpandConstant('{app}\{#TrayExe}'));
     MovePayloadAside(ExpandConstant('{app}\apo\ncs_aec_apo.dll'));
     MovePayloadAside(ExpandConstant('{app}\plugins\rnnoise_mono.dll'));
     MovePayloadAside(ExpandConstant('{app}\plugins\webrtc_apm_16k.dll'));

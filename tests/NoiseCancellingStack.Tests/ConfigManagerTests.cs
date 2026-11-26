@@ -171,6 +171,77 @@ public sealed class ConfigManagerTests
         }
     }
 
+    [Fact]
+    public void BuildDisabledManagedConfig_LoadsNoProcessor()
+    {
+        var config = ConfigManager.BuildDisabledManagedConfig();
+        Assert.DoesNotContain("VSTPlugin", config, StringComparison.Ordinal);
+        Assert.All(config.Split('\n', StringSplitOptions.RemoveEmptyEntries), line => Assert.StartsWith("#", line.Trim()));
+    }
+
+    [Fact]
+    public void SetFiltering_SwitchesOnlyTheManagedFileAndStaysTrusted()
+    {
+        var directory = CreateManagedDirectory(ConfigManager.BuildManagedConfig(RnNoisePlugin, WebRtcPlugin));
+        try
+        {
+            var logger = new TestLogger();
+            var mainBefore = File.ReadAllText(Path.Combine(directory, "config.txt"));
+
+            Assert.True(ConfigManager.SetFiltering(directory, RnNoisePlugin, WebRtcPlugin, enabled: false, logger));
+            Assert.Equal(ConfigManager.BuildDisabledManagedConfig(), File.ReadAllText(Path.Combine(directory, ConfigManager.ManagedFileName)));
+            Assert.Equal(mainBefore, File.ReadAllText(Path.Combine(directory, "config.txt")));
+            // A turned-off installation is still ours: repair may run and uninstall may remove it.
+            Assert.True(ConfigManager.IsManagedInstallation(directory, RnNoisePlugin, WebRtcPlugin));
+            Assert.True(ConfigManager.IsTrustedManagedInstallation(directory, RnNoisePlugin, WebRtcPlugin));
+            Assert.False(ConfigManager.SetFiltering(directory, RnNoisePlugin, WebRtcPlugin, enabled: false, logger));
+
+            Assert.True(ConfigManager.SetFiltering(directory, RnNoisePlugin, WebRtcPlugin, enabled: true, logger));
+            Assert.Equal(ConfigManager.BuildManagedConfig(RnNoisePlugin, WebRtcPlugin), File.ReadAllText(Path.Combine(directory, ConfigManager.ManagedFileName)));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void SetFiltering_NeverOverwritesAHandEditedFile()
+    {
+        const string edited = "# my own tweaks\nPreamp: -3 dB\n";
+        var directory = CreateManagedDirectory(edited);
+        try
+        {
+            Assert.False(ConfigManager.SetFiltering(directory, RnNoisePlugin, WebRtcPlugin, enabled: false, new TestLogger()));
+            Assert.Equal(edited, File.ReadAllText(Path.Combine(directory, ConfigManager.ManagedFileName)));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void InstallAndUninstall_RespectTheTurnedOffState()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"NoiseCancellingStack-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var logger = new TestLogger();
+            ConfigManager.Install(directory, RnNoisePlugin, WebRtcPlugin, Path.Combine(directory, "backups"), logger, filteringEnabled: false);
+            var managedPath = Path.Combine(directory, ConfigManager.ManagedFileName);
+            Assert.Equal(ConfigManager.BuildDisabledManagedConfig(), File.ReadAllText(managedPath));
+
+            Assert.True(ConfigManager.Uninstall(directory, RnNoisePlugin, WebRtcPlugin, logger));
+            Assert.False(File.Exists(managedPath));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static string BuildVersion101Config(string pluginPath)
     {
         var encodedPath = pluginPath.Contains(' ', StringComparison.Ordinal) ? $"\"{pluginPath}\"" : pluginPath;

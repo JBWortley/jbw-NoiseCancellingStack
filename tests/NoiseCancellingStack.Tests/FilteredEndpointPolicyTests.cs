@@ -72,6 +72,36 @@ public sealed class FilteredEndpointPolicyTests
     }
 
     [Fact]
+    public void ToggleTarget_SwapsOursAndWindowsValuesButNeverAnotherOwners()
+    {
+        var original = Text("Microphone");
+        var installed = Text("Microphone FILTERED");
+        var foreign = Text("Desk mic");
+
+        Assert.True(FilteredEndpointPolicy.ToggleTarget(false, original, installed, installed)!.EquivalentTo(original));
+        Assert.True(FilteredEndpointPolicy.ToggleTarget(true, original, installed, original)!.EquivalentTo(installed));
+        Assert.Null(FilteredEndpointPolicy.ToggleTarget(false, original, installed, original));   // already off
+        Assert.Null(FilteredEndpointPolicy.ToggleTarget(true, original, installed, installed));   // already on
+        Assert.Null(FilteredEndpointPolicy.ToggleTarget(false, original, installed, foreign));
+        Assert.Null(FilteredEndpointPolicy.ToggleTarget(true, original, installed, foreign));
+    }
+
+    [Fact]
+    public void UserControlSecurity_LetsUsersOnlyReadAndSetValues()
+    {
+        var security = FilteringControl.BuildUserControlSecurity();
+        Assert.True(security.AreAccessRulesProtected);   // nothing inherited from HKLM\SOFTWARE
+        var users = security.GetAccessRules(true, false, typeof(System.Security.Principal.SecurityIdentifier))
+            .Cast<System.Security.AccessControl.RegistryAccessRule>()
+            .Single(rule => rule.IdentityReference.Equals(
+                new System.Security.Principal.SecurityIdentifier(System.Security.Principal.WellKnownSidType.BuiltinUsersSid, null)));
+        var allowed = System.Security.AccessControl.RegistryRights.QueryValues | System.Security.AccessControl.RegistryRights.SetValue
+            | System.Security.AccessControl.RegistryRights.Notify | System.Security.AccessControl.RegistryRights.ReadPermissions;
+        Assert.Equal(allowed, users.RegistryRights);
+        Assert.Equal(System.Security.AccessControl.InheritanceFlags.None, users.InheritanceFlags);
+    }
+
+    [Fact]
     public void RawCaptureToReapply_SelectsOnlyEndpointsWindowsResetToTheDriverValue()
     {
         var reset = Tracked("{11111111-1111-1111-1111-111111111111}");

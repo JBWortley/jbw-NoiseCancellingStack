@@ -42,6 +42,16 @@ reference_ring_tests = executable(
 
 test('reference-ring', reference_ring_tests)
 
+# Tray icon (MIT, plain Win32, no runtime dependencies). Runs unelevated in the user's session.
+ncs_tray = executable(
+  'ncs_tray',
+  ['tray/ncs_tray.cpp'],
+  win_subsystem: 'windows',
+  cpp_args: ncs_werror + ['-DUNICODE', '-D_UNICODE'],
+  dependencies: [cpp.find_library('user32'), cpp.find_library('shell32'),
+                 cpp.find_library('advapi32'), cpp.find_library('gdi32')],
+)
+
 if get_option('with_webrtc')
   webrtc_subproject = subproject(
     'webrtc-audio-processing',

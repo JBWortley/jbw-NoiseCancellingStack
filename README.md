@@ -106,7 +106,7 @@ The icon is green while filtering is on, grey while it is off, amber while a cha
 
 ## Is it always running?
 
-There is no persistent filtering application. Windows loads the configured APO and the matching processor when an attached microphone's shared-mode capture graph becomes active, then unloads it when no longer needed. The tray icon and the watcher are small helpers (about 1 MB and 17 MB of memory) that use no CPU while idle.
+There is no persistent filtering application. Windows loads the configured APO and the matching processor when an attached microphone's shared-mode capture graph becomes active, then unloads it when no longer needed. The tray icon and the watcher are small helpers (about 2 MB and 18 MB of private memory) that use no CPU while idle. Measured CPU, memory, power, and latency, with a comparison against NVIDIA Broadcast's published figures, are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 A hidden SYSTEM task runs an idempotent repair scan one minute after startup, including on battery. It uses `StartWhenAvailable`, permits only one instance, and has a bounded execution time. The scan repairs the managed configuration, discovers newly registered microphones, and restarts Windows Audio only when an attachment or configuration actually changed.
 
